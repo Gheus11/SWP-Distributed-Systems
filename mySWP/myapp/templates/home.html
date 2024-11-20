@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+</head>
+<body>
+    <h1>Home</h1>
+    <ul>
+        <li><a href="/create_node/">Create node</a></li>
+        <li><a href="/connect_node/">Connect node</a></li>
+        <li><a href="/disconnect_node">Disconnect node</a></li>
+        <li><a href="/stop_node/">Stop node</a></li>
+    </ul>
+    <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit">Logout</button>
+    </form>
+</body>
+</html>
