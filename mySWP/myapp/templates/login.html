@@ -1,25 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-</head>
-<body>
-    <h1>Login</h1>
-    {% if error_message %}
-        <p style="color: red;">{{ error_message }}</p>
-    {% endif %}
+<link rel="stylesheet" href="/static/css/style.css">
+<div class="wrapper">
+  <div class="form">
+    <div class="title">
+      Login
+    </div>
     <form method="post">
+      <div class="input_wrap">
+        {% if messages %}
+        <span class="error_msg">
+          {% for message in messages %}
+            {{ message }}
+          {% endfor %}
+        </span>
+        {% endif %}
         {% csrf_token %}
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required>
-        <br>
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required>
-        <br>
-        <button type="submit">Login</button>
+        {{login_form}}
+      </div>
+      <button class="btn disabled input_wrap" style="padding: 15px" type="submit" >Login</button>
     </form>
-</body>
-</html>
 
+    <!-- if we want to make a "sign in" function... -->
+    <!-- <p class="text-center">Don't have an account? <a href="/register">Create an account</a>.</p> -->
+  
+  </div>
+</div>
