@@ -1,22 +1,60 @@
 <link rel="stylesheet" href="/static/css/style.css">
 <div class="wrapper">
   <div class="form">
+
+    <!-- Title -->
     <div class="title">
       Home
     </div>
 
-    <!-- Create Node Form -->
-    <form method="post" action="/create_node/">
-        {% csrf_token %}
-        <button class="btn enabled input_wrap" style="padding: 15px" type="submit">Create Node</button>
+    <!-- Create Node -->
+    <form method="post">
+      {% csrf_token %}
+      <div class="input_wrap">
+        <label>Hornet Number (Create):</label>
+        <input type="text" name="create_number" placeholder="Enter hornet number to create (0 ~ 99)">
+        <!-- "create_number" is a key for a user input. By using this, you can get the user input in the server -->
+
+        <!-- display only the errors that occur during the "create node" process-->
+        {% if messages %}
+        <span class="error_msg">
+          {% for message in messages %}
+            {% if "create_node" in message.tags %}
+              {{ message }}
+            {% endif %}
+          {% endfor %}
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- Key: "action", value: "create_node" -->
+      <!-- In order to distinguish from other functions like stop_node, connect_node... -->
+      <button class="btn enabled input_wrap" style="padding: 15px" type="submit" name="action" value="create_node">Create Node</button>
     </form>
 
-    <!-- Stop Node Form -->
-    <form method="post" action="/stop_node/">
-        {% csrf_token %}
-        <button class="btn enabled input_wrap" style="padding: 15px" type="submit">Stop Node</button>
+    <!-- Stop Node -->
+    <form method="post">
+      {% csrf_token %}
+      <div class="input_wrap">
+        <label>Hornet Number (Stop):</label>
+        <input type="text" name="stop_number" placeholder="Enter hornet number to stop (0 ~ 99)">
+        <!-- "stop_number" is a key for a user input. By using this, you can get the user input in the server -->
+
+        <!-- display only the errors that occur during the "stop node" process-->
+        {% if messages %}
+        <span class="error_msg">
+          {% for message in messages %}
+            {% if "stop_node" in message.tags %}
+              {{ message }}
+            {% endif %}
+          {% endfor %}
+        </span>
+        {% endif %}
+
+      </div>
+      <button class="btn enabled input_wrap" style="padding: 15px" type="submit" name="action" value="stop_node">Stop Node</button>
     </form>
-  
+
     <!-- Connect Node Form -->
     <form method="post" action="/connect_node/">
         {% csrf_token %}
