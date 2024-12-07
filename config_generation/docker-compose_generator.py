@@ -18,7 +18,7 @@ else:
 
 
 def generate_config(index):
-    base_ip = "172.18.2"
+    base_ip = "172.18.1"
     return{
     "hornet_ip": f"{base_ip}{index}.20",
     "coordinator_ip": f"{base_ip}{index}.21",
@@ -46,7 +46,7 @@ def generate_config(index):
     "prometeus_hornet": f"9{index}0",           # binds to 9311
     "inx_hornet": f"9{index}1",                 # binds to 9029
     "prometeus_indexer": f"9{index}2",          # binds to 9311
-    "prometeus_mqtt": f"9{index}3",             # binds to 9311
+    "prometeus_mqtt": f"9{index}4",             # binds to 9311
     "bind_participation": f"9{index}5",         # binds to 9892
     "prometeus_spammer": f"9{index}6",          # binds to 9311
     "bind_poi": f"9{index}7",                   # binds to 9687
@@ -58,6 +58,7 @@ def generate_config(index):
     "gossip" : f"156{index}",                   # binds to 15600
 
     "node_net" : f"{base_ip}{index}.0/24",
+    "node_net_name" : f"nodenet-{index}",
 
     "hornet_name" : f"hornet-{index}",
     "coordinator_name" : f"inx-coordinator-{index}",

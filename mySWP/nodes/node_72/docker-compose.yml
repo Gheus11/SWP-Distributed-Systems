@@ -1,4 +1,4 @@
-version: "3.9"
+
 services:
   create-snapshots:
     container_name: create-snapshots
@@ -8,7 +8,7 @@ services:
     image: hornet:dev
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.20
+        ipv4_address: 172.18.172.20
     volumes:
       - ./protocol_parameters.json:/app/protocol_parameters.json:ro
       - ./snapshots:/app/snapshots
@@ -30,7 +30,7 @@ services:
     image: hornet:dev
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.20
+        ipv4_address: 172.18.172.20
     environment:
       - "COO_PRV_KEYS=651941eddb3e68cb1f6ef4ef5b04625dcf5c70de1fdc4b1c9eadb2c219c074e0ed3c3f1a319ff4e909cf2771d79fece0ac9bd9fd2ee49ea6c0885c9cb3b1248c,0e324c6ff069f31890d496e9004636fd73d8e8b5bea08ec58a4178ca85462325f6752f5f46a53364e2ee9c4d662d762a81efd51010282a75cd6bd03f28ef349c"
     volumes:
@@ -51,7 +51,7 @@ services:
   #
   # Nodes
   #
-  hornet-1:
+  hornet-72:
     container_name: hornet-72
     build:
       context: ../
@@ -59,7 +59,7 @@ services:
     image: hornet:dev
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.20
+        ipv4_address: 172.18.172.20
     ulimits:
       nofile:
         soft: 8192
@@ -80,17 +80,17 @@ services:
     command:
       - "-c"
       - "config_private_tangle.json"
-      - "--node.alias=hornet-1"
+      - "--node.alias=hornet-72"
       - "--inx.enabled=true"
-      - "--inx.bindAddress=172.18.272.20:9029"
+      - "--inx.bindAddress=172.18.172.20:9029"
       - "--p2p.identityPrivateKey=1f46fad4f538a031d4f87f490f6bca4319dfd0307636a5759a22b5e8874bd608f9156ba976a12918c16a481c38c88a7b5351b769adc30390e93b6c0a63b09b79"
       - "--p2p.peers=/ip4/172.18.222.11/tcp/15600/p2p/12D3KooWCKwcTWevoRKa2kEBputeGASvEBuDfRDSbe8t1DWugUmL,/ip4/172.18.223.11/tcp/15600/p2p/12D3KooWGdr8M5KX8KuKaXSiKfHJstdVnRkadYmupF7tFk2HrRoA,/ip4/172.18.224.11/tcp/15600/p2p/12D3KooWC7uE9w3RN4Vh1FJAZa8SbE8yMWR6wCVBajcWpyWguV73"
       - "--p2p.peerAliases=hornet-2,hornet-3,hornet-4"
       - "--debug.enabled=true"
       - "--prometheus.enabled=true"
-      - "--prometheus.bindAddress=172.18.272.20:9311"
+      - "--prometheus.bindAddress=172.18.172.20:9311"
       - "--profiling.enabled=true"
-      - "--profiling.bindAddress=172.18.272.20:6060"
+      - "--profiling.bindAddress=172.18.172.20:6060"
     profiles:
       - 2-nodes
       - 3-nodes
@@ -99,14 +99,14 @@ services:
   #
   # INX
   # 
-  inx-coordinator-1:
+  inx-coordinator-72:
     container_name: inx-coordinator-72
     image: iotaledger/inx-coordinator:1.0
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.21
+        ipv4_address: 172.18.172.21
     depends_on:
-      hornet-1:
+      hornet-72:
         condition: service_healthy
     environment:
       - "COO_PRV_KEYS=651941eddb3e68cb1f6ef4ef5b04625dcf5c70de1fdc4b1c9eadb2c219c074e0ed3c3f1a319ff4e909cf2771d79fece0ac9bd9fd2ee49ea6c0885c9cb3b1248c,0e324c6ff069f31890d496e9004636fd73d8e8b5bea08ec58a4178ca85462325f6752f5f46a53364e2ee9c4d662d762a81efd51010282a75cd6bd03f28ef349c"
@@ -115,24 +115,24 @@ services:
     volumes:
       - ./privatedb/state:/app/state
     command:
-      - "--inx.address=172.18.272.20:9029"
+      - "--inx.address=172.18.172.20:9029"
       - "--coordinator.stateFilePath=state/coordinator.state"
       - "--coordinator.blockBackups.enabled=false"
       - "--profiling.enabled=true"
-      - "--profiling.bindAddress=172.18.272.21:6060"
+      - "--profiling.bindAddress=172.18.172.21:6060"
     profiles:
       - 2-nodes
       - 3-nodes
       - 4-nodes
 
-  inx-indexer-1:
+  inx-indexer-72:
     container_name: inx-indexer-72
     image: iotaledger/inx-indexer:1.0
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.22
+        ipv4_address: 172.18.172.22
     depends_on:
-      hornet-1:
+      hornet-72:
         condition: service_healthy
     restart: on-failure
     ports:
@@ -141,61 +141,61 @@ services:
     volumes:
       - ./privatedb/indexer:/app/database
     command:
-      - "--inx.address=172.18.272.20:9029"
-      - "--restAPI.bindAddress=172.18.272.22:9091"
+      - "--inx.address=172.18.172.20:9029"
+      - "--restAPI.bindAddress=172.18.172.22:9091"
       - "--prometheus.enabled=true"
-      - "--prometheus.bindAddress=172.18.272.22:9311"
+      - "--prometheus.bindAddress=172.18.172.22:9311"
       - "--prometheus.goMetrics=false"
       - "--prometheus.processMetrics=false"
       - "--prometheus.restAPIMetrics=true"
       - "--prometheus.inxMetrics=true"
       - "--prometheus.promhttpMetrics=false"
       - "--profiling.enabled=true"
-      - "--profiling.bindAddress=172.18.272.22:6060"
+      - "--profiling.bindAddress=172.18.172.22:6060"
     profiles:
       - 2-nodes
       - 3-nodes
       - 4-nodes
 
-  inx-mqtt-1:
+  inx-mqtt-72:
     container_name: inx-mqtt-72
     image: iotaledger/inx-mqtt:1.0
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.23
+        ipv4_address: 172.18.172.23
     depends_on:
-      hornet-1:
+      hornet-72:
         condition: service_healthy
     restart: on-failure
     ports:
-      - "9723:9311/tcp"
+      - "9724:9311/tcp"
       - "6723:6060/tcp"
     command:
-      - "--inx.address=172.18.272.20:9029"
-      - "--mqtt.websocket.bindAddress=172.18.272.23:1888"
+      - "--inx.address=172.18.172.20:9029"
+      - "--mqtt.websocket.bindAddress=172.18.172.23:1888"
       - "--prometheus.enabled=true"
-      - "--prometheus.bindAddress=172.18.272.23:9311"
+      - "--prometheus.bindAddress=172.18.172.23:9311"
       - "--prometheus.goMetrics=false"
       - "--prometheus.mqttMetrics=true"
       - "--prometheus.processMetrics=false"
       - "--prometheus.promhttpMetrics=false"
       - "--profiling.enabled=true"
-      - "--profiling.bindAddress=172.18.272.23:6060"
+      - "--profiling.bindAddress=172.18.172.23:6060"
     profiles:
       - 2-nodes
       - 3-nodes
       - 4-nodes
 
-  inx-faucet-1:
+  inx-faucet-72:
     container_name: inx-faucet-72
     image: iotaledger/inx-faucet:1.0
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.24
+        ipv4_address: 172.18.172.24
     depends_on:
-      hornet-1:
+      hornet-72:
         condition: service_healthy
-      inx-indexer-1:
+      inx-indexer-72:
         condition: service_started
     restart: on-failure
     ports:
@@ -204,27 +204,27 @@ services:
     environment:
       - "FAUCET_PRV_KEY=887844b1e6bf9ca9e0b57584656add4370dbb49a8cb79e2e3032229f30fd80359e3df559ad0de8e5fa019b9ea46d1ee40879f3f3f74594a3306de9dfd43dcd25"
     command:
-      - "--inx.address=172.18.272.20:9029"
-      - "--faucet.bindAddress=172.18.272.24:8091"
+      - "--inx.address=172.18.172.20:9029"
+      - "--faucet.bindAddress=172.18.172.24:8091"
       - "--faucet.amount=100000000000"
       - "--faucet.smallAmount=10000000000"
       - "--faucet.maxAddressBalance=200000000000"
       - "--faucet.rateLimit.enabled=false"
       - "--profiling.enabled=true"
-      - "--profiling.bindAddress=172.18.272.24:6060"
+      - "--profiling.bindAddress=172.18.172.24:6060"
     profiles:
       - 2-nodes
       - 3-nodes
       - 4-nodes
 
-  inx-participation-1:
+  inx-participation-72:
     container_name: inx-participation-72
     image: iotaledger/inx-participation:1.0
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.25
+        ipv4_address: 172.18.172.25
     depends_on:
-      hornet-1:
+      hornet-72:
         condition: service_healthy
     restart: on-failure
     ports:
@@ -233,26 +233,26 @@ services:
     volumes:
       - ./privatedb/participation:/app/database
     command:
-      - "--inx.address=172.18.272.20:9029"
-      - "--restAPI.bindAddress=172.18.272.25:9892"
+      - "--inx.address=172.18.172.20:9029"
+      - "--restAPI.bindAddress=172.18.172.25:9892"
       - "--participation.db.path=/app/database"
       - "--profiling.enabled=true"
-      - "--profiling.bindAddress=172.18.272.25:6060"
+      - "--profiling.bindAddress=172.18.172.25:6060"
     profiles:
       - 2-nodes
       - 3-nodes
       - 4-nodes
 
-  inx-spammer-1:
+  inx-spammer-72:
     container_name: inx-spammer-72
     image: iotaledger/inx-spammer:1.0
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.26
+        ipv4_address: 172.18.172.26
     depends_on:
-      hornet-1:
+      hornet-72:
         condition: service_healthy
-      inx-indexer-1:
+      inx-indexer-72:
         condition: service_started
     restart: on-failure
     ports:
@@ -262,8 +262,8 @@ services:
     environment:
       - "SPAMMER_MNEMONIC=reward addict anger tongue denial supply cattle lawn foot climb ask friend base spring ensure spike alien equal burst bitter crowd august ignore animal"
     command:
-      - "--inx.address=172.18.272.20:9029"
-      - "--restAPI.bindAddress=172.18.272.26:9092"
+      - "--inx.address=172.18.172.20:9029"
+      - "--restAPI.bindAddress=172.18.172.26:9092"
       - "--spammer.autostart=true"
       - "--spammer.bpsRateLimit=50"
       - "--spammer.cpuMaxUsage=0.0"
@@ -280,49 +280,49 @@ services:
       - "--spammer.valueSpam.createNFT=true"
       - "--spammer.valueSpam.destroyNFT=true"
       - "--prometheus.enabled=true"
-      - "--prometheus.bindAddress=172.18.272.26:9311"
+      - "--prometheus.bindAddress=172.18.172.26:9311"
       - "--prometheus.spammerMetrics=true"
       - "--prometheus.goMetrics=false"
       - "--prometheus.processMetrics=false"
       - "--prometheus.promhttpMetrics=false"
       - "--profiling.enabled=true"
-      - "--profiling.bindAddress=172.18.272.26:6060"
+      - "--profiling.bindAddress=172.18.172.26:6060"
     profiles:
       - 2-nodes
       - 3-nodes
       - 4-nodes
 
-  inx-poi-1:
+  inx-poi-72:
     container_name: inx-poi-72
     image: iotaledger/inx-poi:1.0
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.27
+        ipv4_address: 172.18.172.27
     depends_on:
-      hornet-1:
+      hornet-72:
         condition: service_healthy
     restart: on-failure
     ports:
       - "9727:9687/tcp"
       - "6727:6060/tcp"
     command:
-      - "--inx.address=172.18.272.20:9029"
-      - "--restAPI.bindAddress=172.18.272.27:9687"
+      - "--inx.address=172.18.172.20:9029"
+      - "--restAPI.bindAddress=172.18.172.27:9687"
       - "--profiling.enabled=true"
-      - "--profiling.bindAddress=172.18.272.27:6060"
+      - "--profiling.bindAddress=172.18.172.27:6060"
     profiles:
       - 2-nodes
       - 3-nodes
       - 4-nodes
 
-  inx-dashboard-1:
+  inx-dashboard-72:
     container_name: inx-dashboard-72
     image: iotaledger/inx-dashboard:1.0
     networks:
       nodenet-1:
-        ipv4_address: 172.18.272.28
+        ipv4_address: 172.18.172.28
     depends_on:
-      hornet-1:
+      hornet-72:
         condition: service_healthy
     restart: on-failure
     ports:
@@ -330,18 +330,18 @@ services:
       - "8728:8081/tcp"
       - "6728:6060/tcp"
     command:
-      - "--inx.address=172.18.272.20:9029"
-      - "--dashboard.bindAddress=172.18.272.28:8081"
+      - "--inx.address=172.18.172.20:9029"
+      - "--dashboard.bindAddress=172.18.172.28:8728"
       - "--dashboard.auth.passwordHash=577eb97f8faf2af47ff957b00827d6bfe9d05b810981e3073dc42553505282c1"
       - "--dashboard.auth.passwordSalt=e5d8d0bd3bb9723236177b4713a11580c55b69a51e7055dd11fa1dad3b8f6d6c"
       - "--dashboard.auth.identityPrivateKey=1f46fad4f538a031d4f87f490f6bca4319dfd0307636a5759a22b5e8874bd608f9156ba976a12918c16a481c38c88a7b5351b769adc30390e93b6c0a63b09b79"
       - "--prometheus.enabled=false"
-      - "--prometheus.bindAddress=172.18.272.28:9311"
+      - "--prometheus.bindAddress=172.18.172.28:9311"
       - "--prometheus.goMetrics=false"
       - "--prometheus.processMetrics=false"
       - "--prometheus.promhttpMetrics=false"
       - "--profiling.enabled=true"
-      - "--profiling.bindAddress=172.18.272.28:6060"
+      - "--profiling.bindAddress=172.18.172.28:6060"
     profiles:
       - 2-nodes
       - 3-nodes
@@ -352,4 +352,4 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 172.18.272.0/24
+        - subnet: 172.18.172.0/24

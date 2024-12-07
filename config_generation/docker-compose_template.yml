@@ -1,4 +1,4 @@
-version: "3.9"
+
 services:
   create-snapshots:
     container_name: create-snapshots
@@ -51,7 +51,7 @@ services:
   #
   # Nodes
   #
-  hornet-1:
+  $hornet_name:
     container_name: $hornet_name
     build:
       context: ../
@@ -80,7 +80,7 @@ services:
     command:
       - "-c"
       - "config_private_tangle.json"
-      - "--node.alias=hornet-1"
+      - "--node.alias=$hornet_name"
       - "--inx.enabled=true"
       - "--inx.bindAddress=$hornet_ip:9029"
       - "--p2p.identityPrivateKey=1f46fad4f538a031d4f87f490f6bca4319dfd0307636a5759a22b5e8874bd608f9156ba976a12918c16a481c38c88a7b5351b769adc30390e93b6c0a63b09b79"
@@ -99,14 +99,14 @@ services:
   #
   # INX
   # 
-  inx-coordinator-1:
+  $coordinator_name:
     container_name: $coordinator_name
     image: iotaledger/inx-coordinator:1.0
     networks:
       nodenet-1:
         ipv4_address: $coordinator_ip
     depends_on:
-      hornet-1:
+      $hornet_name:
         condition: service_healthy
     environment:
       - "COO_PRV_KEYS=651941eddb3e68cb1f6ef4ef5b04625dcf5c70de1fdc4b1c9eadb2c219c074e0ed3c3f1a319ff4e909cf2771d79fece0ac9bd9fd2ee49ea6c0885c9cb3b1248c,0e324c6ff069f31890d496e9004636fd73d8e8b5bea08ec58a4178ca85462325f6752f5f46a53364e2ee9c4d662d762a81efd51010282a75cd6bd03f28ef349c"
@@ -125,14 +125,14 @@ services:
       - 3-nodes
       - 4-nodes
 
-  inx-indexer-1:
+  $indexer_name:
     container_name: $indexer_name
     image: iotaledger/inx-indexer:1.0
     networks:
       nodenet-1:
         ipv4_address: $indexer_ip
     depends_on:
-      hornet-1:
+      $hornet_name:
         condition: service_healthy
     restart: on-failure
     ports:
@@ -157,14 +157,14 @@ services:
       - 3-nodes
       - 4-nodes
 
-  inx-mqtt-1:
+  $mqtt_name:
     container_name: $mqtt_name
     image: iotaledger/inx-mqtt:1.0
     networks:
       nodenet-1:
         ipv4_address: $mqtt_ip
     depends_on:
-      hornet-1:
+      $hornet_name:
         condition: service_healthy
     restart: on-failure
     ports:
@@ -186,16 +186,16 @@ services:
       - 3-nodes
       - 4-nodes
 
-  inx-faucet-1:
+  $faucet_name:
     container_name: $faucet_name
     image: iotaledger/inx-faucet:1.0
     networks:
       nodenet-1:
         ipv4_address: $faucet_ip
     depends_on:
-      hornet-1:
+      $hornet_name:
         condition: service_healthy
-      inx-indexer-1:
+      $indexer_name:
         condition: service_started
     restart: on-failure
     ports:
@@ -217,14 +217,14 @@ services:
       - 3-nodes
       - 4-nodes
 
-  inx-participation-1:
+  $participation_name:
     container_name: $participation_name
     image: iotaledger/inx-participation:1.0
     networks:
       nodenet-1:
         ipv4_address: $participation_ip
     depends_on:
-      hornet-1:
+      $hornet_name:
         condition: service_healthy
     restart: on-failure
     ports:
@@ -243,16 +243,16 @@ services:
       - 3-nodes
       - 4-nodes
 
-  inx-spammer-1:
+  $spammer_name:
     container_name: $spammer_name
     image: iotaledger/inx-spammer:1.0
     networks:
       nodenet-1:
         ipv4_address: $spammer_ip
     depends_on:
-      hornet-1:
+      $hornet_name:
         condition: service_healthy
-      inx-indexer-1:
+      $indexer_name:
         condition: service_started
     restart: on-failure
     ports:
@@ -292,14 +292,14 @@ services:
       - 3-nodes
       - 4-nodes
 
-  inx-poi-1:
+  $poi_name:
     container_name: $poi_name
     image: iotaledger/inx-poi:1.0
     networks:
       nodenet-1:
         ipv4_address: $poi_ip
     depends_on:
-      hornet-1:
+      $hornet_name:
         condition: service_healthy
     restart: on-failure
     ports:
@@ -315,14 +315,14 @@ services:
       - 3-nodes
       - 4-nodes
 
-  inx-dashboard-1:
+  $dashboard_name:
     container_name: $dashboard_name
     image: iotaledger/inx-dashboard:1.0
     networks:
       nodenet-1:
         ipv4_address: $dashboard_ip
     depends_on:
-      hornet-1:
+      $hornet_name:
         condition: service_healthy
     restart: on-failure
     ports:
@@ -331,7 +331,7 @@ services:
       - "$profiling_dashboard:6060/tcp"
     command:
       - "--inx.address=$hornet_ip:9029"
-      - "--dashboard.bindAddress=$dashboard_ip:8081"
+      - "--dashboard.bindAddress=$dashboard_ip:$bind_dashboard"
       - "--dashboard.auth.passwordHash=577eb97f8faf2af47ff957b00827d6bfe9d05b810981e3073dc42553505282c1"
       - "--dashboard.auth.passwordSalt=e5d8d0bd3bb9723236177b4713a11580c55b69a51e7055dd11fa1dad3b8f6d6c"
       - "--dashboard.auth.identityPrivateKey=1f46fad4f538a031d4f87f490f6bca4319dfd0307636a5759a22b5e8874bd608f9156ba976a12918c16a481c38c88a7b5351b769adc30390e93b6c0a63b09b79"
