@@ -40,6 +40,7 @@ def create_node(create_number):
             cleanup_path = "./cleanup.sh"
 
             try:
+                
                 # Add execute permission only to the owner (user)
                 subprocess.run(["chmod", "u+x", bootstrap_path], check=True)
                 subprocess.run(["chmod", "u+x", run_path], check=True)
