@@ -45,8 +45,8 @@ def create_node(create_number):
                 subprocess.run(["chmod", "u+x", run_path], check=True)
                 subprocess.run(["chmod", "u+x", cleanup_path], check=True)
                 # Execute bootstrap.sh & run.sh
-                subprocess.run([bootstrap_path], check=True)
-                subprocess.run([run_path, "-d"], check=True)
+                subprocess.run(["sudo", bootstrap_path], check=True)
+                subprocess.run(["sudo", run_path, "-d"], check=True)
                 print(f"Hornet-{create_number} created.")
             except subprocess.CalledProcessError as e:
                 print(f"Error occurred while stopping hornet-{create_number}: {e}")
@@ -75,8 +75,8 @@ def stop_node(stop_number):
 
             try:
                 # Execute
-                subprocess.run(["docker", "compose", "--profile", "4-nodes", "down"], check=True)
-                subprocess.run([cleanup_path], check=True)
+                subprocess.run(["sudo", "docker", "compose", "--profile", "4-nodes", "down"], check=True)
+                subprocess.run(["sudo", cleanup_path], check=True)
                 print(f"Hornet-{stop_number} stopped.")
             except subprocess.CalledProcessError as e:
                 print(f"Error occurred while stopping hornet-{stop_number}: {e}")
