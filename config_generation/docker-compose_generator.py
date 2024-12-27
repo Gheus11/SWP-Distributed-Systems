@@ -1,7 +1,7 @@
 import os
 from string import Template
 import shutil
-import functions_ed as f
+import functions_ed
 
 # Open template file
 current_dir = os.getcwd()
@@ -19,9 +19,9 @@ else:
 
 def generate_config(index):
     base_ip = "172.18.1"
-    priv_pub_key_concat = f.all_in_one()[0]
+    priv_pub_key_concat = functions_ed.all_in_one()[0]
     return{
-    "pirv_pub_key_concat": f"{priv_pub_key_concat}",
+    "priv_pub_key_concat": f"{priv_pub_key_concat}",
     "hornet_ip": f"{base_ip}{index}.20",
     "coordinator_ip": f"{base_ip}{index}.21",
     "indexer_ip": f"{base_ip}{index}.22",

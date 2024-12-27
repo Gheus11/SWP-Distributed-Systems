@@ -1,0 +1,353 @@
+services:
+  create-snapshots:
+    container_name: create-snapshots
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    image: hornet:dev
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.20
+    volumes:
+      - ./protocol_parameters.json:/app/protocol_parameters.json:ro
+      - ./snapshots:/app/snapshots
+    command:
+      - "tool"
+      - "snap-gen"
+      - "--protocolParametersPath=/app/protocol_parameters.json"
+      - "--mintAddress=tst1qq2kvnu9pqzptkggrpqrvltvagccsh6aj2fkdhla7p3lrsy9dwhdzu5l2ye"
+      - "--genesisAddresses=tst1qpszqzadsym6wpppd6z037dvlejmjuke7s24hm95s9fg9vpua7vlupxvxq2:1000000000000,tst1qqweu75ldpyann5jsthqsa6m0thx4tmqxncj6uqxf5q974pmqx30y5mcdp2:1000000000000"
+      - "--outputPath=/app/snapshots/hornet/full_snapshot.bin"
+    profiles:
+      - snapshots
+
+  bootstrap-network:
+    container_name: bootstrap-network
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    image: hornet:dev
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.20
+    environment:
+      - "COO_PRV_KEYS=651941eddb3e68cb1f6ef4ef5b04625dcf5c70de1fdc4b1c9eadb2c219c074e0ed3c3f1a319ff4e909cf2771d79fece0ac9bd9fd2ee49ea6c0885c9cb3b1248c,0e324c6ff069f31890d496e9004636fd73d8e8b5bea08ec58a4178ca85462325f6752f5f46a53364e2ee9c4d662d762a81efd51010282a75cd6bd03f28ef349c"
+    volumes:
+      - ./config_private_tangle.json:/app/config_private_tangle.json:ro
+      - ./snapshots/hornet:/app/snapshots
+      - ./privatedb/hornet:/app/privatedb
+      - ./privatedb/state:/app/state
+    command:
+      - "tool"
+      - "bootstrap-private-tangle"
+      - "--configFile=/app/config_private_tangle.json"
+      - "--snapshotPath=/app/snapshots/full_snapshot.bin"
+      - "--databasePath=/app/privatedb"
+      - "--cooStatePath=/app/state/coordinator.state"
+    profiles:
+      - bootstrap
+
+  #
+  # Nodes
+  #
+  hornet-73:
+    container_name: hornet-73
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    image: hornet:dev
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.20
+    ulimits:
+      nofile:
+        soft: 8192
+        hard: 8192
+    stop_grace_period: 5m
+    ports:
+      - "15673:15600/tcp"
+      - "14273:14265/tcp"
+      - "9730:9311/tcp"
+      - "9731:9029/tcp"
+      - "6730:6060/tcp"
+    cap_drop:
+      - ALL
+    volumes:
+      - ./config_private_tangle.json:/app/config_private_tangle.json:ro
+      - ./privatedb/hornet:/app/privatedb
+      - ./snapshots/hornet:/app/snapshots
+    command:
+      - "-c"
+      - "config_private_tangle.json"
+      - "--node.alias=hornet-73"
+      - "--inx.enabled=true"
+      - "--inx.bindAddress=172.18.173.20:9029"
+      - "--p2p.identityPrivateKey=cd826443bbdf9c5418e9fabe602045861e0a7835175f0dbc3cffde315c4ef886e9655c80c659feee4608e4522feaedd4cf07f2550b51938172f499eb12af191e"
+      - "--p2p.peerAliases=hornet-2,hornet-3,hornet-4"
+      - "--debug.enabled=true"
+      - "--prometheus.enabled=true"
+      - "--prometheus.bindAddress=172.18.173.20:9311"
+      - "--profiling.enabled=true"
+      - "--profiling.bindAddress=172.18.173.20:6060"
+    profiles:
+      - 2-nodes
+      - 3-nodes
+      - 4-nodes
+
+  #
+  # INX
+  # 
+  inx-coordinator-73:
+    container_name: inx-coordinator-73
+    image: iotaledger/inx-coordinator:1.0
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.21
+    depends_on:
+      hornet-73:
+        condition: service_healthy
+    environment:
+      - "COO_PRV_KEYS=651941eddb3e68cb1f6ef4ef5b04625dcf5c70de1fdc4b1c9eadb2c219c074e0ed3c3f1a319ff4e909cf2771d79fece0ac9bd9fd2ee49ea6c0885c9cb3b1248c,0e324c6ff069f31890d496e9004636fd73d8e8b5bea08ec58a4178ca85462325f6752f5f46a53364e2ee9c4d662d762a81efd51010282a75cd6bd03f28ef349c"
+    ports:
+      - "6731:6060/tcp"
+    volumes:
+      - ./privatedb/state:/app/state
+    command:
+      - "--inx.address=172.18.173.20:9029"
+      - "--coordinator.stateFilePath=state/coordinator.state"
+      - "--coordinator.blockBackups.enabled=false"
+      - "--profiling.enabled=true"
+      - "--profiling.bindAddress=172.18.173.21:6060"
+    profiles:
+      - 2-nodes
+      - 3-nodes
+      - 4-nodes
+
+  inx-indexer-73:
+    container_name: inx-indexer-73
+    image: iotaledger/inx-indexer:1.0
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.22
+    depends_on:
+      hornet-73:
+        condition: service_healthy
+    restart: on-failure
+    ports:
+      - "9732:9311/tcp"
+      - "6732:6060/tcp"
+    volumes:
+      - ./privatedb/indexer:/app/database
+    command:
+      - "--inx.address=172.18.173.20:9029"
+      - "--restAPI.bindAddress=172.18.173.22:9091"
+      - "--prometheus.enabled=true"
+      - "--prometheus.bindAddress=172.18.173.22:9311"
+      - "--prometheus.goMetrics=false"
+      - "--prometheus.processMetrics=false"
+      - "--prometheus.restAPIMetrics=true"
+      - "--prometheus.inxMetrics=true"
+      - "--prometheus.promhttpMetrics=false"
+      - "--profiling.enabled=true"
+      - "--profiling.bindAddress=172.18.173.22:6060"
+    profiles:
+      - 2-nodes
+      - 3-nodes
+      - 4-nodes
+
+  inx-mqtt-73:
+    container_name: inx-mqtt-73
+    image: iotaledger/inx-mqtt:1.0
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.23
+    depends_on:
+      hornet-73:
+        condition: service_healthy
+    restart: on-failure
+    ports:
+      - "9734:9311/tcp"
+      - "6733:6060/tcp"
+    command:
+      - "--inx.address=172.18.173.20:9029"
+      - "--mqtt.websocket.bindAddress=172.18.173.23:1888"
+      - "--prometheus.enabled=true"
+      - "--prometheus.bindAddress=172.18.173.23:9311"
+      - "--prometheus.goMetrics=false"
+      - "--prometheus.mqttMetrics=true"
+      - "--prometheus.processMetrics=false"
+      - "--prometheus.promhttpMetrics=false"
+      - "--profiling.enabled=true"
+      - "--profiling.bindAddress=172.18.173.23:6060"
+    profiles:
+      - 2-nodes
+      - 3-nodes
+      - 4-nodes
+
+  inx-faucet-73:
+    container_name: inx-faucet-73
+    image: iotaledger/inx-faucet:1.0
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.24
+    depends_on:
+      hornet-73:
+        condition: service_healthy
+      inx-indexer-73:
+        condition: service_started
+    restart: on-failure
+    ports:
+      - "8734:8091/tcp"
+      - "6734:6060/tcp"
+    environment:
+      - "FAUCET_PRV_KEY=887844b1e6bf9ca9e0b57584656add4370dbb49a8cb79e2e3032229f30fd80359e3df559ad0de8e5fa019b9ea46d1ee40879f3f3f74594a3306de9dfd43dcd25"
+    command:
+      - "--inx.address=172.18.173.20:9029"
+      - "--faucet.bindAddress=172.18.173.24:8091"
+      - "--faucet.amount=100000000000"
+      - "--faucet.smallAmount=10000000000"
+      - "--faucet.maxAddressBalance=200000000000"
+      - "--faucet.rateLimit.enabled=false"
+      - "--profiling.enabled=true"
+      - "--profiling.bindAddress=172.18.173.24:6060"
+    profiles:
+      - 2-nodes
+      - 3-nodes
+      - 4-nodes
+
+  inx-participation-73:
+    container_name: inx-participation-73
+    image: iotaledger/inx-participation:1.0
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.25
+    depends_on:
+      hornet-73:
+        condition: service_healthy
+    restart: on-failure
+    ports:
+      - "9735:9892/tcp"
+      - "6735:6060/tcp"
+    volumes:
+      - ./privatedb/participation:/app/database
+    command:
+      - "--inx.address=172.18.173.20:9029"
+      - "--restAPI.bindAddress=172.18.173.25:9892"
+      - "--participation.db.path=/app/database"
+      - "--profiling.enabled=true"
+      - "--profiling.bindAddress=172.18.173.25:6060"
+    profiles:
+      - 2-nodes
+      - 3-nodes
+      - 4-nodes
+
+  inx-spammer-73:
+    container_name: inx-spammer-73
+    image: iotaledger/inx-spammer:1.0
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.26
+    depends_on:
+      hornet-73:
+        condition: service_healthy
+      inx-indexer-73:
+        condition: service_started
+    restart: on-failure
+    ports:
+      - "9736:9311/tcp"
+      - "9739:9092/tcp"
+      - "6736:6060/tcp"
+    environment:
+      - "SPAMMER_MNEMONIC=reward addict anger tongue denial supply cattle lawn foot climb ask friend base spring ensure spike alien equal burst bitter crowd august ignore animal"
+    command:
+      - "--inx.address=172.18.173.20:9029"
+      - "--restAPI.bindAddress=172.18.173.26:9092"
+      - "--spammer.autostart=true"
+      - "--spammer.bpsRateLimit=50"
+      - "--spammer.cpuMaxUsage=0.0"
+      - "--spammer.workers=0"
+      - "--spammer.valueSpam.enabled=true"
+      - "--spammer.valueSpam.sendBasicOutput=true"
+      - "--spammer.valueSpam.collectBasicOutput=true"
+      - "--spammer.valueSpam.createAlias=true"
+      - "--spammer.valueSpam.destroyAlias=true"
+      - "--spammer.valueSpam.createFoundry=true"
+      - "--spammer.valueSpam.destroyFoundry=true"
+      - "--spammer.valueSpam.mintNativeToken=true"
+      - "--spammer.valueSpam.meltNativeToken=true"
+      - "--spammer.valueSpam.createNFT=true"
+      - "--spammer.valueSpam.destroyNFT=true"
+      - "--prometheus.enabled=true"
+      - "--prometheus.bindAddress=172.18.173.26:9311"
+      - "--prometheus.spammerMetrics=true"
+      - "--prometheus.goMetrics=false"
+      - "--prometheus.processMetrics=false"
+      - "--prometheus.promhttpMetrics=false"
+      - "--profiling.enabled=true"
+      - "--profiling.bindAddress=172.18.173.26:6060"
+    profiles:
+      - 2-nodes
+      - 3-nodes
+      - 4-nodes
+
+  inx-poi-73:
+    container_name: inx-poi-73
+    image: iotaledger/inx-poi:1.0
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.27
+    depends_on:
+      hornet-73:
+        condition: service_healthy
+    restart: on-failure
+    ports:
+      - "9737:9687/tcp"
+      - "6737:6060/tcp"
+    command:
+      - "--inx.address=172.18.173.20:9029"
+      - "--restAPI.bindAddress=172.18.173.27:9687"
+      - "--profiling.enabled=true"
+      - "--profiling.bindAddress=172.18.173.27:6060"
+    profiles:
+      - 2-nodes
+      - 3-nodes
+      - 4-nodes
+
+  inx-dashboard-73:
+    container_name: inx-dashboard-73
+    image: iotaledger/inx-dashboard:1.0
+    networks:
+      nodenet-1:
+        ipv4_address: 172.18.173.28
+    depends_on:
+      hornet-73:
+        condition: service_healthy
+    restart: on-failure
+    ports:
+      - "9738:9311/tcp"
+      - "8738:8081/tcp"
+      - "6738:6060/tcp"
+    command:
+      - "--inx.address=172.18.173.20:9029"
+      - "--dashboard.bindAddress=172.18.173.28:8738"
+      - "--dashboard.auth.passwordHash=577eb97f8faf2af47ff957b00827d6bfe9d05b810981e3073dc42553505282c1"
+      - "--dashboard.auth.passwordSalt=e5d8d0bd3bb9723236177b4713a11580c55b69a51e7055dd11fa1dad3b8f6d6c"
+      - "--dashboard.auth.identityPrivateKey=1f46fad4f538a031d4f87f490f6bca4319dfd0307636a5759a22b5e8874bd608f9156ba976a12918c16a481c38c88a7b5351b769adc30390e93b6c0a63b09b79"
+      - "--prometheus.enabled=false"
+      - "--prometheus.bindAddress=172.18.173.28:9311"
+      - "--prometheus.goMetrics=false"
+      - "--prometheus.processMetrics=false"
+      - "--prometheus.promhttpMetrics=false"
+      - "--profiling.enabled=true"
+      - "--profiling.bindAddress=172.18.173.28:6060"
+    profiles:
+      - 2-nodes
+      - 3-nodes
+      - 4-nodes
+
+networks:
+  nodenet-1:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.173.0/24

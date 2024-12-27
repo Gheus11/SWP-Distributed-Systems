@@ -82,7 +82,7 @@ services:
       - "--node.alias=$hornet_name"
       - "--inx.enabled=true"
       - "--inx.bindAddress=$hornet_ip:9029"
-      - "--p2p.identityPrivateKey="$priv_pub_key_concat"
+      - "--p2p.identityPrivateKey=$priv_pub_key_concat"
       - "--p2p.peerAliases=hornet-2,hornet-3,hornet-4"
       - "--debug.enabled=true"
       - "--prometheus.enabled=true"
