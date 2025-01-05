@@ -82,7 +82,7 @@ services:
       - "--node.alias=hornet-36"
       - "--inx.enabled=true"
       - "--inx.bindAddress=172.18.136.20:9029"
-      - "--p2p.identityPrivateKey=1516933a38783a5051d12306f55faa63594c1e4d1f0650bb43c15e03ef0e3fce2a31dc220f28f26ec3258c26237c9f96da83911e6b30f84ba82ccf14ff5dce7e"
+      - "--p2p.identityPrivateKey=b585dd562b8c6397bd96c37be88043cf44936bc557cdb31a0d1b211c423f97cd9f237a4a20235b85f710a135ea2af8cc44e1c44f94b8a832c58d0abcb7f4ab73"
       - "--p2p.peerAliases=hornet-2,hornet-3,hornet-4"
       - "--debug.enabled=true"
       - "--prometheus.enabled=true"
@@ -329,7 +329,7 @@ services:
       - "6368:6060/tcp"
     command:
       - "--inx.address=172.18.136.20:9029"
-      - "--dashboard.bindAddress=172.18.136.28:8368"
+      - "--dashboard.bindAddress=172.18.136.28:8081"
       - "--dashboard.auth.passwordHash=577eb97f8faf2af47ff957b00827d6bfe9d05b810981e3073dc42553505282c1"
       - "--dashboard.auth.passwordSalt=e5d8d0bd3bb9723236177b4713a11580c55b69a51e7055dd11fa1dad3b8f6d6c"
       - "--dashboard.auth.identityPrivateKey=1f46fad4f538a031d4f87f490f6bca4319dfd0307636a5759a22b5e8874bd608f9156ba976a12918c16a481c38c88a7b5351b769adc30390e93b6c0a63b09b79"

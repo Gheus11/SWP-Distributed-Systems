@@ -329,7 +329,7 @@ services:
       - "$profiling_dashboard:6060/tcp"
     command:
       - "--inx.address=$hornet_ip:9029"
-      - "--dashboard.bindAddress=$dashboard_ip:$bind_dashboard"
+      - "--dashboard.bindAddress=$dashboard_ip:8081"
       - "--dashboard.auth.passwordHash=577eb97f8faf2af47ff957b00827d6bfe9d05b810981e3073dc42553505282c1"
       - "--dashboard.auth.passwordSalt=e5d8d0bd3bb9723236177b4713a11580c55b69a51e7055dd11fa1dad3b8f6d6c"
       - "--dashboard.auth.identityPrivateKey=1f46fad4f538a031d4f87f490f6bca4319dfd0307636a5759a22b5e8874bd608f9156ba976a12918c16a481c38c88a7b5351b769adc30390e93b6c0a63b09b79"

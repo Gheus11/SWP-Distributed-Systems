@@ -1,4 +1,4 @@
-from bip_utils import Bip39MnemonicGenerator, Bip39SeedGenerator, Bip32Slip10Ed25519, Bip39MnemonicValidator
+from bip_utils import Bip39MnemonicGenerator, Bip39SeedGenerator, Bip32Slip10Ed25519, Bip39MnemonicValidator # works with python versions 3.7 to 3.12
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.primitives import serialization
 from base58 import b58encode
