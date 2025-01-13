@@ -5,12 +5,12 @@ import docker.errors
 
 def get_container_by_name(container_name):
     """
-    get a container instance(?) by its name
+    get a running container instance(?) by its name
     """
     client = docker.from_env()
     try:    # exist
-        container = client.containers.get(container_name)
-        return container
+        running_containers = client.containers.list(filters={"name": container_name})
+        return running_containers
     except docker.errors.NotFound:  # not exist
         return None
     
