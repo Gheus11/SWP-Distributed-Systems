@@ -14,6 +14,15 @@ def get_container_by_name(container_name):
     except docker.errors.NotFound:  # not exist
         return None
     
+def get_ip(network_name, container_name):
+    """
+    Retrieve the IP address of a container within a specific overlay network.
+    """
+    result = subprocess.run(["docker", "inspect", container_name], capture_output=True, text=True)
+    return_dictionary = json.loads(result.stdout)[0]
+    ip = return_dictionary["NetworkSettings"]["Networks"][network_name]["IPAddress"]
+    return ip
+
 def create_node(create_number):
     if not create_number.isdigit(): # if it's not a number
         print("Error: Node number must be a valid number.")
