@@ -23,6 +23,11 @@ def get_ip(network_name, container_name):
     ip = return_dictionary["NetworkSettings"]["Networks"][network_name]["IPAddress"]
     return ip
 
+def get_id(container_name):
+    command = f"docker logs {container_name} | grep 'peer configured' | awk '{{print $NF}}'"
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    return result.stdout.strip()
+
 def create_node(create_number):
     if not create_number.isdigit(): # if it's not a number
         print("Error: Node number must be a valid number.")
