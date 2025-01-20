@@ -2,6 +2,8 @@ import os, sys, json
 import subprocess
 import docker
 import docker.errors
+import requests
+import time
 
 def get_container_by_name(container_name):
     """
@@ -14,6 +16,7 @@ def get_container_by_name(container_name):
     except docker.errors.NotFound:  # not exist
         return None
     
+
 def get_ip(network_name, container_name):
     """
     Retrieve the IP address of a container within a specific overlay network.
@@ -23,10 +26,12 @@ def get_ip(network_name, container_name):
     ip = return_dictionary["NetworkSettings"]["Networks"][network_name]["IPAddress"]
     return ip
 
+
 def get_id(container_name):
     command = f"docker logs {container_name} | grep 'peer configured' | awk '{{print $NF}}'"
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
     return result.stdout.strip()
+
 
 def create_node(create_number):
     if not create_number.isdigit(): # if it's not a number
@@ -104,7 +109,7 @@ def stop_node(stop_number):
 
 client_ = docker.from_env()
 
-def create_network(name=None):
+def create_network(name):
     '''
     Creates a network with a custom name.
     '''
@@ -134,7 +139,7 @@ def connect_containers(network_name, *container_names:str):
     try:
         network = client_.networks.get(network_name)
     except docker.errors.NotFound:
-        print("Make sure a valid network name is specified, using the 'create_network(name)' function.")
+        print("Make sure a valid network name and/or container names are specified.")
 
     for container_name in container_names:
         try:
@@ -167,10 +172,73 @@ def stop_network(network_name):
         network = client_.networks.get(network_name)
         network.remove()
         print(f"Network '{network_name}' stopped.")
-    except docker.errors.NotFound:
-        print('')
+    except docker.errors.NotFound as e:
+        print(f"Failed to stop the network '{network_name}': {e}.")
     except docker.errors.APIError as e:
         print(f"Failed to stop the network '{network_name}': {e}.")
+
+
+def connect_nodes(network, *container_names):
+    '''
+    Runs multiple of the above functions (create_network(), connect_containers()) automatically to achieve peer connection between nodes within the same docker network.
+    '''
+    network_name = create_network(network)
+    connect_containers(network, *container_names)
+    host_node_number = container_names[0][-2:]
+    valid_containers = []
+    
+    for container in container_names:
+        try:
+            node_number = container[-2:]
+            node_ip = get_ip(network_name, container)
+            node_id = get_id(container)
+
+            url = f'http://127.0.0.1:142{host_node_number}/api/core/v2/peers'
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+            data = {
+                "multiAddress": f"/dns/{node_ip}/tcp/15600/p2p/{node_id}",
+                "alias": f"hornet-{node_number}"
+            }
+
+            response = requests.post(url, headers, data)
+            valid_containers.append(container)
+            print(f'SUCCESS: {response}')
+        except Exception as e:
+            print(f'Failure: {e}')
+            pass
+        except requests.exceptions.RequestException as e:
+            print(f'Request failure: {e}')
+            pass
+
+    time.sleep(12)
+    for container in valid_containers:
+        #create_node(container)
+        print(f"'{container}' has been restarted, and is peered to '{container_names[0]}'.\n")
+
+
+def disconnect_nodes(network_name, *container_names):
+    '''
+    Runs multiple of the above functions (disconnect_containers(), stop_node()) automatically to disconnect peers within the same docker network.
+    '''
+    host_node_number = container_names[0][-2:]
+    for container in container_names[1:]:
+        node_id = get_id(container)
+        url = f"http://127.0.0.1:142{host_node_number}/api/core/v2/peers/{node_id}"
+        headers = {
+            "Accept": "application/json"
+        }
+
+        response = requests.delete(url, headers=headers)
+        if response.status_code == 204:
+            print("Peer disconnected successfully.")
+        else:
+            print("Error:", response.json())
+
+        disconnect_containers(network_name, container)
+        stop_node(container)
 
 
 if __name__ == "__main__":
@@ -233,5 +301,21 @@ if __name__ == "__main__":
         container_names = sys.argv[3:]
         disconnect_containers(network_name, *container_names)
 
+    elif command == "connect_nodes":
+        if len(sys.argv) < 4:
+            print("Usage: python api.py connect_nodes NETWORK_NAME CONTAINER_NAME [CONTAINER_NAME ...]")
+            sys.exit(1)
+        network_name = sys.argv[2]
+        container_names = sys.argv[3:]
+        connect_containers(network_name, *container_names)
+
+    elif command == "disconnect_nodes":
+        if len(sys.argv) < 4:
+            print("Usage: python api.py disconnect_nodes NETWORK_NAME CONTAINER_NAME [CONTAINER_NAME ...]")
+            sys.exit(1)
+        network_name = sys.argv[2]
+        container_names = sys.argv[3:]
+        disconnect_containers(network_name, *container_names)
+
     else:
-        print("Unknown command. Use 'create_node', 'stop_node', or 'connect_containers'.")
+        print("Unknown command. Use 'create_node', 'stop_node', 'create_network', 'stop_network', 'connect_containers', 'disconnect_containers', 'connect_nodes', 'disconnect_nodes'.")
