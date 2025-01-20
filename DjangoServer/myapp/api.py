@@ -144,8 +144,11 @@ def connect_containers(network_name, *container_names:str):
     for container_name in container_names:
         try:
             container = client_.containers.get(container_name)
-            network.connect(container)
-            print(f"Connected '{container_name}' to the network '{network_name}'.")
+            if container in network.containers:
+                print(f'{container} already exists.')
+            else:
+                network.connect(container)
+                print(f"Connected '{container_name}' to the network '{network_name}'.")
         except docker.errors.NotFound:
             print(f"Container '{container_name}' not found. Skipping.")
             pass
@@ -179,73 +182,68 @@ def stop_network(network_name):
         print(f"Failed to stop the network '{network_name}': {e}.")
 
 
-def connect_nodes(network_name, *container_names):
+def connect_nodes(network_name, host_node, node):
     '''
     Runs multiple of the above functions (create_network(), connect_containers()) automatically to achieve peer connection between nodes within the same docker network.
     '''
-    create_network(network_name)
-    connect_containers(network_name, *container_names)
-    host_node_number = container_names[0][-2:]
-    valid_containers = []
+    #create_network(network_name)
+    connect_containers(network_name, host_node)
+    connect_containers(network_name, node)
+    host_node_number = host_node[-2:]
     
-    for container in container_names[1:]:
-        #time.sleep(1)
-        try:
-            node_number = container[-2:]
-            node_ip = get_ip(str(network_name), str(container))
-            node_id = get_id(container)
+    try:
+        node_number = node[-2:]
+        node_ip = get_ip(str(network_name), str(node))
+        node_id = get_id(node)
 
-            url = f'http://127.0.0.1:142{host_node_number}/api/core/v2/peers'
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            }
-            data = {
-                "multiAddress": f"/dns/{node_ip}/tcp/15600/p2p/{node_id}",
-                "alias": f"hornet-{node_number}"
-            }
+        url = f'http://127.0.0.1:142{host_node_number}/api/core/v2/peers'
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        data = {
+            "multiAddress": f"/dns/{node_ip}/tcp/15600/p2p/{node_id}",
+            "alias": f"hornet-{node_number}"
+        }
 
-            requests.post(url=url, headers=headers, json=data)
-            valid_containers.append(container)
-            print(f'SUCCESS')
+        requests.post(url=url, headers=headers, json=data)
+        print(f'SUCCESS')
     
-        except requests.exceptions.RequestException as e:
-            print(f'Request failure: {e}')
-            pass
-        except Exception as e:
-            print(f'Failure: {e}')
-            pass
+    except requests.exceptions.RequestException as e:
+        print(f'Request failure: {e}')
+    except Exception as e:
+        print(f'Failure: {e}')
 
-    '''print('Restarting nodes..')
-    print(valid_containers)
-    for container in valid_containers:
-        node_number = container[-2:]
-        create_node(node_number)
-        print(f"'{container}' has been restarted, and is peered to '{container_names[0]}'.\n")'''
+    time.sleep(15)
+    while not client_.containers.get(node):
+        time.sleep(1)
+    
+    print('Restarting node..')
+    node_number = node[-2:]
+    create_node(node_number)
+    print(f"'{node}' has been restarted, and is peered to '{host_node}'.\n")
 
 
-def disconnect_nodes(network_name, *container_names):
+def disconnect_nodes(network_name, host_node, node):
     '''
     Runs multiple of the above functions (disconnect_containers(), stop_node()) automatically to disconnect peers within the same docker network.
     '''
-    host_node_number = container_names[0][-2:]
-    for container in container_names[1:]:
-        node_number = container[-2:]
-        node_id = get_id(container)
-        print(node_id)
-        url = f"http://127.0.0.1:142{host_node_number}/api/core/v2/peers/{node_id}"
-        headers = {
-            "Accept": "application/json"
-        }
+    host_node_number = host_node[-2:]
+    node_number = node[-2:]
+    node_id = get_id(node)
+    url = f"http://127.0.0.1:142{host_node_number}/api/core/v2/peers/{node_id}"
+    headers = {
+        "Accept": "application/json"
+    }
 
-        response = requests.delete(url=url, headers=headers)
-        if response.status_code == 204:
-            print("Peer disconnected successfully.")
-        else:
-            print("Error:", response.json())
+    response = requests.delete(url=url, headers=headers)
+    if response.status_code == 204:
+        print("Peer disconnected successfully.")
+    else:
+        print("Error:", response.json())
 
-        disconnect_containers(network_name, container)
-        #stop_node(node_number)
+    disconnect_containers(network_name, node)
+    #stop_node(node_number)
 
 
 if __name__ == "__main__":
