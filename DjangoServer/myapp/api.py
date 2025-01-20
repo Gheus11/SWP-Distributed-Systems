@@ -28,7 +28,7 @@ def get_ip(network_name, container_name):
 
 
 def get_id(container_name):
-    command = f"docker logs {container_name} | grep 'peer configured' | awk '{{print $NF}}'"
+    command = f"docker logs {container_name} | grep 'peer configured' | head -n 1 | awk '{{print $NF}}'"
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
     return result.stdout.strip()
 
