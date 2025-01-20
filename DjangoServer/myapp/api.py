@@ -70,7 +70,7 @@ def create_node(create_number):
                 subprocess.run(["sudo", run_path, "-d"], check=True)
                 print(f"Hornet-{create_number} created.")
             except subprocess.CalledProcessError as e:
-                print(f"Error occurred while stopping hornet-{create_number}: {e}")
+                print(f"Error occurred while creating hornet-{create_number}: {e}")
             finally:
                 # Recover the working dir path to its original state
                 os.chdir(current_dir)
@@ -145,9 +145,10 @@ def connect_containers(network_name, *container_names:str):
         try:
             container = client_.containers.get(container_name)
             network.connect(container)
-            print(f"Connected '{container_name}' to the network '{network}'.")
+            print(f"Connected '{container_name}' to the network '{network_name}'.")
         except docker.errors.NotFound:
             print(f"Container '{container_name}' not found. Skipping.")
+            pass
         except docker.errors.APIError as e:
             print(f"Failed to connect '{container_name}' to the network: {e}")
 
@@ -178,19 +179,20 @@ def stop_network(network_name):
         print(f"Failed to stop the network '{network_name}': {e}.")
 
 
-def connect_nodes(network, *container_names):
+def connect_nodes(network_name, *container_names):
     '''
     Runs multiple of the above functions (create_network(), connect_containers()) automatically to achieve peer connection between nodes within the same docker network.
     '''
-    network_name = create_network(network)
-    connect_containers(network, *container_names)
+    create_network(network_name)
+    connect_containers(network_name, *container_names)
     host_node_number = container_names[0][-2:]
     valid_containers = []
     
-    for container in container_names:
+    for container in container_names[1:]:
+        #time.sleep(1)
         try:
             node_number = container[-2:]
-            node_ip = get_ip(network_name, container)
+            node_ip = get_ip(str(network_name), str(container))
             node_id = get_id(container)
 
             url = f'http://127.0.0.1:142{host_node_number}/api/core/v2/peers'
@@ -203,20 +205,23 @@ def connect_nodes(network, *container_names):
                 "alias": f"hornet-{node_number}"
             }
 
-            response = requests.post(url, headers, data)
+            requests.post(url=url, headers=headers, json=data)
             valid_containers.append(container)
-            print(f'SUCCESS: {response}')
-        except Exception as e:
-            print(f'Failure: {e}')
-            pass
+            print(f'SUCCESS')
+    
         except requests.exceptions.RequestException as e:
             print(f'Request failure: {e}')
             pass
+        except Exception as e:
+            print(f'Failure: {e}')
+            pass
 
-    time.sleep(12)
+    '''print('Restarting nodes..')
+    print(valid_containers)
     for container in valid_containers:
-        #create_node(container)
-        print(f"'{container}' has been restarted, and is peered to '{container_names[0]}'.\n")
+        node_number = container[-2:]
+        create_node(node_number)
+        print(f"'{container}' has been restarted, and is peered to '{container_names[0]}'.\n")'''
 
 
 def disconnect_nodes(network_name, *container_names):
@@ -225,20 +230,22 @@ def disconnect_nodes(network_name, *container_names):
     '''
     host_node_number = container_names[0][-2:]
     for container in container_names[1:]:
+        node_number = container[-2:]
         node_id = get_id(container)
+        print(node_id)
         url = f"http://127.0.0.1:142{host_node_number}/api/core/v2/peers/{node_id}"
         headers = {
             "Accept": "application/json"
         }
 
-        response = requests.delete(url, headers=headers)
+        response = requests.delete(url=url, headers=headers)
         if response.status_code == 204:
             print("Peer disconnected successfully.")
         else:
             print("Error:", response.json())
 
         disconnect_containers(network_name, container)
-        stop_node(container)
+        #stop_node(node_number)
 
 
 if __name__ == "__main__":
@@ -307,7 +314,7 @@ if __name__ == "__main__":
             sys.exit(1)
         network_name = sys.argv[2]
         container_names = sys.argv[3:]
-        connect_containers(network_name, *container_names)
+        connect_nodes(network_name, *container_names)
 
     elif command == "disconnect_nodes":
         if len(sys.argv) < 4:
@@ -315,7 +322,7 @@ if __name__ == "__main__":
             sys.exit(1)
         network_name = sys.argv[2]
         container_names = sys.argv[3:]
-        disconnect_containers(network_name, *container_names)
+        disconnect_nodes(network_name, *container_names)
 
     else:
         print("Unknown command. Use 'create_node', 'stop_node', 'create_network', 'stop_network', 'connect_containers', 'disconnect_containers', 'connect_nodes', 'disconnect_nodes'.")
