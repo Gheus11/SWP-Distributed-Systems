@@ -13,8 +13,19 @@ body{
 	background: linear-gradient(to right, #f4b661, #f16160);
 }
 
+.grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr); /* 2 columns */
+	grid-gap: 20px; /* Adds space between the wrappers */
+}
+
+@media (max-width: 768px) {
+	.grid {
+	  grid-template-columns: 1fr; /* Switch to single-column layout on smaller screens */
+	}
+}
 .wrapper{
-	min-height: 100vh;
+	min-height: 50vh;
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -23,9 +34,10 @@ body{
 .form{
 	width: 425px;
 	height: auto;
-	background: #fff;
+	background: rgba(255, 255, 255, 0.7);
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Add a subtle shadow for depth */
 	padding: 35px 50px;
-	border-radius: 2px;
+	border-radius: 10px;
 }
 
 .form .title{
@@ -92,4 +104,37 @@ body{
 	margin-bottom: 5px;
 	color: #f74040;
 	display: block;
+}
+
+.login-wrapper{
+	min-height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.logout-wrapper {
+	margin-top: 20px; /* Add spacing between the grid and the logout button */
+	text-align: center; /* Center the button */
+  }
+  
+.logout-btn {
+	background: #f16160; /* Match the gradient color scheme */
+	border: none;
+	padding: 15px 40px; /* Make the button larger */
+	font-size: 16px;
+	font-weight: 700;
+	color: #fff;
+	border-radius: 5px;
+	text-transform: uppercase;
+	cursor: pointer;
+	transition: background 0.3s ease;
+}
+
+.logout-btn:hover {
+	background: #d9534f; /* Darker shade on hover for interactivity */
+}
+
+.logout-btn:active {
+	background: #b33c3a; /* Even darker shade when clicked */
 }
