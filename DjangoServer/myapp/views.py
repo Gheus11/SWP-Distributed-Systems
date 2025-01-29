@@ -6,9 +6,8 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm
 
-import os
-import subprocess
-import docker
+from myapp.webapi import get_container_by_name, create_node, stop_node, create_network
+from myapp.webapi import stop_network, connect_nodes, disconnect_nodes
 
 # Create your views here.
 
@@ -48,9 +47,6 @@ def login_view(request):
 def unauthorized_response(request):
     return HttpResponse("You must be logged in to access this page.", status=403)
 
-@login_required(login_url="/unauthorized/")
-def stop_node(request):
-    return HttpResponse("Stop node page.")
 
 @login_required(login_url="/unauthorized/")
 def connect_node(request):
@@ -59,70 +55,7 @@ def connect_node(request):
 @login_required(login_url="/unauthorized/")
 def disconnect_node(request):
     return HttpResponse("Disconnect node page.")
-
-def get_container_by_name(container_name):
-    """
-    get a container instance(?) by its name
-    """
-    client = docker.from_env()
-    try:    # exist
-        container = client.containers.get(container_name)
-        return container
-    except docker.errors.NotFound:  # not exist
-        return None
     
-def create_node(request, create_number):
-    # Change the working directory of this .py file: You must execute "docker 
-    # compose" command in the dir where the docker-compose.yml exists. Otherwise, 
-    # the "docker compose" command cannot identify the configuration file 
-    # "docker-compose.yml". This command tend to find the configuration file in the 
-    # dir where the command is executed.
-    current_dir = os.getcwd()
-    node_dir = f"./nodes/node_{create_number}"
-    os.chdir(node_dir)
-    print(f"before: {current_dir}")
-    print(f"after: {os.getcwd()}")
-
-    # Script paths
-    bootstrap_path = "./bootstrap.sh"
-    run_path = "./run.sh"
-
-    try:
-        # Add execute permission only to the owner (user)
-        subprocess.run(["chmod", "u+x", bootstrap_path], check=True)
-        subprocess.run(["chmod", "u+x", run_path], check=True)
-        # Execute bootstrap.sh & run.sh
-        subprocess.run([bootstrap_path, "build"], check=True)
-        subprocess.run([run_path, "-d"], check=True)
-        print(f"Hornet-{create_number} created.")
-    except subprocess.CalledProcessError as e:
-        messages.error(request,f"Error occured while running hornet-{create_number} : {e}")
-    finally:
-        # Recover the working dir path to its original state
-        os.chdir(current_dir)
-
-def stop_node(request, stop_number):
-    current_dir = os.getcwd()
-    node_dir = f"./nodes/node_{stop_number}"
-    os.chdir(node_dir)
-    print(f"before: {current_dir}")
-    print(f"after: {os.getcwd()}")
-
-    # Script paths
-    cleanup_path = "./cleanup.sh"
-
-    try:
-        # Add execute permission only to the owner (user)
-        subprocess.run(["chmod", "u+x", cleanup_path], check=True)
-        # Execute
-        subprocess.run(["docker", "compose", "--profile", "4-nodes", "down"], check=True)
-        subprocess.run([cleanup_path], check=True)
-        print(f"Hornet-{stop_number} stopped.")
-    except subprocess.CalledProcessError as e:
-        messages.error(request, f"Error occurred while stopping hornet-{stop_number}: {e}")
-    finally:
-        # Recover the working dir path to its original state
-        os.chdir(current_dir)
 
 @login_required(login_url="/unauthorized")
 def home(request):
@@ -161,6 +94,27 @@ def home(request):
                 else:
                     stop_number = stop_number.zfill(2)
                     stop_node(request, stop_number)
+
+        elif action == "create_network":
+            network_name = request.POST.get("network_name", None)
+            create_network(network_name)
+
+        elif action == "stop_network":
+            network_name = request.POST.get("stop_network_name", None)
+            stop_network(network_name)
+
+        elif action == "connect_nodes":
+            network_name = request.POST.get("connect_network_name", None)
+            host_node = request.POST.get("connect_host_number", None)
+            node = request.POST.get("connect_number", None)
+            connect_nodes(network_name, host_node, node)
+        
+        elif action == "disconnect_nodes":
+            network_name = request.POST.get("disconnect_network_name", None)
+            host_node = request.POST.get("disconnect_host_number", None)
+            node = request.POST.get("disconnect_number", None)
+            disconnect_nodes(network_name, host_node, node)
+
 
 
     return render(request, "home.html")

@@ -64,32 +64,129 @@
       </form>
     </div>
   </div>
-  
 
-  <!-- Connect Node -->
+  <!-- Create Network -->
   <div class="wrapper">
     <div class="form">
-      
       <div class="title">
-        Connect Node
+        Create Network
       </div>
-      <form method="post" action="/connect_node/">
-          {% csrf_token %}
-          <button class="btn enabled input_wrap" style="padding: 15px" type="submit">Connect Node</button>
+      <form method="post">
+        {% csrf_token %}
+        <div class="input_wrap">
+          <label>Network Name (Create):</label>
+          <input type="text" name="network_name" placeholder="Enter network name to create">
+          <!-- "network_name" is a key for a user input. By using this, you can get the user input in the server -->
+
+          <!-- display only the errors that occur during the "create network" process-->
+          {% if messages %}
+          <span class="error_msg">
+            {% for message in messages %}
+              {% if "create_node" in message.tags %}
+                {{ message }}
+              {% endif %}
+            {% endfor %}
+          </span>
+          {% endif %}
+        </div>
+          <button class="btn enabled input_wrap" style="padding: 15px" type="submit" name="action" value="create_network">Create Network</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Stop Network -->
+  <div class="wrapper">
+    <div class="form">
+      <div class="title">
+        Stop Network
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="input_wrap">
+          <label>Network Name (Stop):</label>
+          <input type="text" name="stop_network_name" placeholder="Enter network name to stop">
+          <!-- "stop_network_name" is a key for a user input. By using this, you can get the user input in the server -->
+
+          <!-- display only the errors that occur during the "disconnect network" process-->
+          {% if messages %}
+          <span class="error_msg">
+            {% for message in messages %}
+              {% if "create_node" in message.tags %}
+                {{ message }}
+              {% endif %}
+            {% endfor %}
+          </span>
+          {% endif %}
+        </div>
+          <button class="btn enabled input_wrap" style="padding: 15px" type="submit" name="action" value="stop_network">Stop Network</button>
+      </form>
+    </div>
+  </div>
+  
+
+  <!-- Connect Nodes -->
+  <div class="wrapper">
+    <div class="form">
+      <div class="title">
+        Connect Nodes
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="input_wrap">
+          <label>Host Hornet:</label>
+          <input type="text" name="connect_host_number" placeholder="e.g. hornet-00">
+          <label>Hornet:</label>
+          <input type="text" name="connect_number" placeholder="e.g. hornet-01">
+          <label>Network Name (Connect):</label>
+          <input type="text" name="connect_network_name" placeholder="Enter network name to connect to">
+          <!-- "connect_number" is a key for a user input. By using this, you can get the user input in the server -->
+
+          <!-- display only the errors that occur during the "connect node" process-->
+          {% if messages %}
+          <span class="error_msg">
+            {% for message in messages %}
+              {% if "create_node" in message.tags %}
+                {{ message }}
+              {% endif %}
+            {% endfor %}
+          </span>
+          {% endif %}
+        </div>
+          <button class="btn enabled input_wrap" style="padding: 15px" type="submit" name="action" value="connect_nodes">Connect Nodes</button>
       </form>
     </div>
   </div>
 
 
-  <!-- Disconnect Node -->
+  <!-- Disconnect Nodes -->
   <div class="wrapper">
     <div class="form"> 
       <div class="title">
-        Disconnect Node
+        Disconnect Nodes
       </div>
-      <form method="post" action="/disconnect_node/">
-          {% csrf_token %}
-          <button class="btn enabled input_wrap" style="padding: 15px" type="submit">Disconnect Node</button>
+      <form method="post">
+        {% csrf_token %}
+        <div class="input_wrap">
+          <label>Host Hornet:</label>
+          <input type="text" name="disconnect_host_number" placeholder="e.g. hornet-00">
+          <label>Hornet:</label>
+          <input type="text" name="disconnect_number" placeholder="e.g. hornet-01">
+          <label>Network Name (Disconnect):</label>
+          <input type="text" name="disconnect_network_name" placeholder="Enter network name to disconnect from">
+          <!-- "disconnect_number" is a key for a user input. By using this, you can get the user input in the server -->
+
+          <!-- display only the errors that occur during the "disconnect node" process-->
+          {% if messages %}
+          <span class="error_msg">
+            {% for message in messages %}
+              {% if "create_node" in message.tags %}
+                {{ message }}
+              {% endif %}
+            {% endfor %}
+          </span>
+          {% endif %}
+        </div>
+          <button class="btn enabled input_wrap" style="padding: 15px" type="submit" name="action" value="disconnect_nodes">Disconnect Nodes</button>
       </form>
     </div>
   </div>
