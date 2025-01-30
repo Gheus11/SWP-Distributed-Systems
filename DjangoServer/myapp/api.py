@@ -48,10 +48,14 @@ def create_node(create_number):
             # the "docker compose" command cannot identify the configuration file 
             # "docker-compose.yml". This command tend to find the configuration file in the 
             # dir where the command is executed.
+
             current_dir = os.getcwd()
-            node_dir = f"../nodes/node_{create_number}"
+            # Get the absolute path of the "myapp" folder
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(script_dir)
+            node_dir = os.path.join(project_root, "nodes", f"node_{create_number}")
             os.chdir(node_dir)
-            print(f"before: {current_dir}")            
+            print(f"before: {current_dir}")
             print(f"after: {os.getcwd()}")
 
             # Script paths
@@ -66,8 +70,12 @@ def create_node(create_number):
                 subprocess.run(["chmod", "u+x", run_path], check=True)
                 subprocess.run(["chmod", "u+x", cleanup_path], check=True)
                 # Execute bootstrap.sh & run.sh
-                subprocess.run(["sudo", bootstrap_path], check=True)
-                subprocess.run(["sudo", run_path, "-d"], check=True)
+                if sys.platform == 'linux':
+                    subprocess.run(["sudo", bootstrap_path], check=True)
+                    subprocess.run(["sudo", run_path, "-d"], check=True)
+                else:
+                    subprocess.run([bootstrap_path], check=True)
+                    subprocess.run([run_path, "-d"], check=True)
                 print(f"Hornet-{create_number} created.")
             except subprocess.CalledProcessError as e:
                 print(f"Error occurred while creating hornet-{create_number}: {e}")
@@ -86,8 +94,12 @@ def stop_node(stop_number):
             print("Error: Node number must be between 0 and 99.")
         else:
             stop_number = stop_number.zfill(2)
+
             current_dir = os.getcwd()
-            node_dir = f"../nodes/node_{stop_number}"
+            # Get the absolute path of the "myapp" folder
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(script_dir)
+            node_dir = os.path.join(project_root, "nodes", f"node_{stop_number}")
             os.chdir(node_dir)
             print(f"before: {current_dir}")
             print(f"after: {os.getcwd()}")
@@ -97,8 +109,12 @@ def stop_node(stop_number):
 
             try:
                 # Execute
-                subprocess.run(["sudo", "docker", "compose", "--profile", "4-nodes", "down"], check=True)
-                subprocess.run(["sudo", cleanup_path], check=True)
+                if sys.platform == "linux":
+                    subprocess.run(["sudo", "docker", "compose", "--profile", "4-nodes", "down"], check=True)
+                    subprocess.run(["sudo", cleanup_path], check=True)
+                else:
+                    subprocess.run(["docker", "compose", "--profile", "4-nodes", "down"], check=True)
+                    subprocess.run([cleanup_path], check=True)
                 print(f"Hornet-{stop_number} stopped.")
             except subprocess.CalledProcessError as e:
                 print(f"Error occurred while stopping hornet-{stop_number}: {e}")

@@ -51,7 +51,10 @@ def create_node_web(request, create_number):
             # "docker-compose.yml". This command tend to find the configuration file in the 
             # dir where the command is executed.
             current_dir = os.getcwd()
-            node_dir = f"./nodes/node_{create_number}"
+            # Get the absolute path of the "myapp" folder
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(script_dir)
+            node_dir = os.path.join(project_root, "nodes", f"node_{create_number}")
             os.chdir(node_dir)
             print(f"before: {current_dir}")            
             print(f"after: {os.getcwd()}")
@@ -92,10 +95,14 @@ def stop_node(request, stop_number):
             print("Error: Node number must be between 0 and 99.")
         else:
             stop_number = stop_number.zfill(2)
+            
             current_dir = os.getcwd()
-            node_dir = f"./nodes/node_{stop_number}"
+            # Get the absolute path of the "myapp" folder
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(script_dir)
+            node_dir = os.path.join(project_root, "nodes", f"node_{stop_number}")
             os.chdir(node_dir)
-            print(f"before: {current_dir}")
+            print(f"before: {current_dir}")            
             print(f"after: {os.getcwd()}")
 
             # Script paths
