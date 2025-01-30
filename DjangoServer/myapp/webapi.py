@@ -5,6 +5,7 @@ import docker.errors
 import requests
 import time
 from django.contrib import messages
+from myapp.api import create_node
 
 def get_container_by_name(container_name):
     """
@@ -34,7 +35,7 @@ def get_id(container_name):
     return result.stdout.strip()
 
 
-def create_node(request, create_number):
+def create_node_web(request, create_number):
     # Change the working directory of this .py file: You must execute "docker 
     # compose" command in the dir where the docker-compose.yml exists. Otherwise, 
     # the "docker compose" command cannot identify the configuration file 
@@ -202,6 +203,7 @@ def connect_nodes(network_name, host_node, node):
     
     print('Restarting node..')
     node_number = node[-2:]
+    print("Node Number:" + str(node_number))
     create_node(node_number)
     print(f"'{node}' has been restarted, and is peered to '{host_node}'.\n")
 
@@ -227,82 +229,3 @@ def disconnect_nodes(network_name, host_node, node):
     disconnect_containers(network_name, node)
     #stop_node(node_number)
 
-
-if __name__ == "__main__":
-    """
-    Example usage:
-    python api.py create_node NODE_NAME
-    python api.py stop_node NODE_NAME
-    python api.py create_network NETWORK_NAME
-    python api.py stop_network NETWORK_NAME
-    python api.py connect_containers NETWORK_NAME CONTAINER_NAME [CONTAINER_NAME ...]
-    python api.py disconnect_containers NETWORK_NAME CONTAINER_NAME [CONTAINER_NAME ...]
-    """
-    if len(sys.argv) < 2:
-        print("Usage: python api.py <command> <args>")
-        sys.exit(1)
-
-    command = sys.argv[1]
-
-    if command == "create_node":
-        if len(sys.argv) < 3:
-            print("Usage: python api.py create_node NODE_NAME")
-            sys.exit(1)
-        hornet_name = sys.argv[2]
-        create_node(hornet_name)
-
-    elif command == "stop_node":
-        if len(sys.argv) < 3:
-            print("Usage: python api.py stop_node NODE_NAME")
-            sys.exit(1)
-        hornet_name = sys.argv[2]
-        stop_node(hornet_name)
-
-    elif command == "create_network":
-        if len(sys.argv) < 3:
-            print("Usage: python api.py create_network NETWORK_NAME")
-            sys.exit(1)
-        network_name = sys.argv[2]
-        create_network(network_name)
-
-    elif command == "stop_network":
-        if len(sys.argv) < 3:
-            print("Usage: python api.py stop_network NETWORK_NAME")
-            sys.exit(1)
-        network_name = sys.argv[2]
-        stop_network(network_name)
-    
-    elif command == "connect_containers":
-        if len(sys.argv) < 4:
-            print("Usage: python api.py connect_containers NETWORK_NAME CONTAINER_NAME [CONTAINER_NAME ...]")
-            sys.exit(1)
-        network_name = sys.argv[2]
-        container_names = sys.argv[3:]
-        connect_containers(network_name, *container_names)
-
-    elif command == "disconnect_containers":
-        if len(sys.argv) < 4:
-            print("Usage: python api.py disconnect_containers NETWORK_NAME CONTAINER_NAME [CONTAINER_NAME ...]")
-            sys.exit(1)
-        network_name = sys.argv[2]
-        container_names = sys.argv[3:]
-        disconnect_containers(network_name, *container_names)
-
-    elif command == "connect_nodes":
-        if len(sys.argv) < 4:
-            print("Usage: python api.py connect_nodes NETWORK_NAME CONTAINER_NAME [CONTAINER_NAME ...]")
-            sys.exit(1)
-        network_name = sys.argv[2]
-        container_names = sys.argv[3:]
-        connect_nodes(network_name, *container_names)
-
-    elif command == "disconnect_nodes":
-        if len(sys.argv) < 4:
-            print("Usage: python api.py disconnect_nodes NETWORK_NAME CONTAINER_NAME [CONTAINER_NAME ...]")
-            sys.exit(1)
-        network_name = sys.argv[2]
-        container_names = sys.argv[3:]
-        disconnect_nodes(network_name, *container_names)
-
-    else:
-        print("Unknown command. Use 'create_node', 'stop_node', 'create_network', 'stop_network', 'connect_containers', 'disconnect_containers', 'connect_nodes', 'disconnect_nodes'.")

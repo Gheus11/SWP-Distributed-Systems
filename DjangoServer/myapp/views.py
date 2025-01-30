@@ -6,7 +6,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm
 
-from myapp.webapi import get_container_by_name, create_node, stop_node, create_network
+from myapp.webapi import get_container_by_name, create_node_web, stop_node, create_network
 from myapp.webapi import stop_network, connect_nodes, disconnect_nodes
 
 # Create your views here.
@@ -78,7 +78,7 @@ def home(request):
                     messages.error(request, "Error: Node number must be between 0 and 99.", extra_tags="create_node")
                 else:
                     create_number = create_number.zfill(2)
-                    create_node(request, create_number)
+                    create_node_web(request, create_number)
 
 
         # Stop node
