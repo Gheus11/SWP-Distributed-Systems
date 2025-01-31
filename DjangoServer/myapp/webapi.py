@@ -50,7 +50,7 @@ def get_id(container_name):
         return None
 
 
-def create_node_web(request, node_number):
+def create_node_web(node_number, request):
     """
     start the Hornet node of the specified number.
     """
@@ -98,13 +98,13 @@ def create_node_web(request, node_number):
 
                 print(f"Hornet-{node_number} created.")
             except subprocess.CalledProcessError as e:
-                messages.error(request,f"create_node error: error occurred while creating hornet-{node_number}: {e}")
+                messages.error(request,f"create_node error: error occurred while creating hornet-{node_number}: {e}", extra_tags="create_node")
             finally:
                 # Recover the working dir path to its original state
                 os.chdir(current_dir)
 
 
-def stop_node(request, stop_number):
+def stop_node(stop_number, request):
     """
     stop the Hornet node of the specified number. That node should already be active (using create_node) for stop_node to work.
     """
@@ -124,8 +124,6 @@ def stop_node(request, stop_number):
             project_root = os.path.dirname(script_dir)
             node_dir = os.path.join(project_root, "nodes", f"node_{stop_number}")
             os.chdir(node_dir)
-            print(f"before: {current_dir}")            
-            print(f"after: {os.getcwd()}")
 
             # Script paths
             cleanup_path = "./cleanup.sh"
@@ -138,9 +136,9 @@ def stop_node(request, stop_number):
                 else:
                     subprocess.run(["docker", "compose", "--profile", "4-nodes", "down"], check=True)
                     subprocess.run([cleanup_path], check=True)
-                print(f"Hornet-{stop_number} stopped.")
+                messages.succes(request, f"Hornet-{stop_number} stopped.", extra_tags="stop_node")
             except subprocess.CalledProcessError as e:
-                messages.error(request, f"stop_node error: error occurred while stopping hornet-{stop_number}: {e}")
+                messages.error(request, f"stop_node error: error occurred while stopping hornet-{stop_number}: {e}", extra_tags="stop_node")
             finally:
                 # Recover the working dir path to its original state
                 os.chdir(current_dir)
@@ -148,31 +146,31 @@ def stop_node(request, stop_number):
 
 client_ = docker.from_env()
 
-def create_network(name):
+def create_network(name, request):
     '''
     Creates a docker network with a custom name.
     '''
     try:
         network = client_.networks.create(name, driver="bridge")
-        print(f"Creating network: {name}")
+        messages.success(request, f"Created network: {name}")
         return network
     except docker.errors.APIError as e:
-        print(f"create_node exception: Failed to create '{name}': {e}")
+        messages.error(request, f"create_node exception: Failed to create '{name}': {e}")
         return None
 
 
-def stop_network(network_name):
+def stop_network(network_name, request):
     '''
     Stops the network with the specified name. That network should already exist(using create_network) for stop_network to work.
     '''
     try:
         network = client_.networks.get(network_name)
         network.remove()
-        print(f"Network '{network_name}' stopped.")
+        messages.success(request, f"Network '{network_name}' stopped.")
     except docker.errors.NotFound as e:
-        print(f"stop_netowrk exception: failed to stop the network '{network_name}': {e}.")
+        messages.error(request, f"stop_netowrk exception: failed to stop the network '{network_name}': {e}.", extra_tags="stop_network")
     except docker.errors.APIError as e:
-        print(f"stop_netowrk exception: failed to stop the network '{network_name}': {e}.")
+        messages.error(request, f"stop_netowrk exception: failed to stop the network '{network_name}': {e}.", extra_tags="stop_network")
 
 
 def connect_containers(network_name, *container_names:str):
@@ -214,7 +212,7 @@ def disconnect_containers(network_name, *container_names:str):
             print(f"disconnect_containers exception: failed to disconnect '{container_name}' from the network '{network_name}': {e}")
 
 
-def connect_nodes(network_name, host_node, node):
+def connect_nodes(network_name, host_node, node, request):
     '''
     Establishes a peer connection between two nodes within the same docker network.
     '''
@@ -238,24 +236,22 @@ def connect_nodes(network_name, host_node, node):
         }
 
         requests.post(url=url, headers=headers, json=data)
-        print(f'Peering request successfully sent.')
     
     except requests.exceptions.RequestException as e:
-        print(f'connect_nodes exception: request failure: {e}')
+        messages.error(request, f'connect_nodes exception: request failure: {e}', extra_tags="connect_nodes")
     except Exception as e:
-        print(f'connect_nodes exception: failure: {e}')
+        messages.error(request, f'connect_nodes exception: failure: {e}', extra_tags="connect_nodes")
 
     time.sleep(15)
     while not client_.containers.get(node):
         time.sleep(1)
     
     node_number = node[-2:]
-    print(f'Restarting node hornet-{node_number}..')
     create_node(node_number)
-    print(f"'{node}' has been restarted, and is peered to '{host_node}'.\n")
+    messages.succes(request, f"'{node}' has been restarted, and is peered to '{host_node}'.\n", extra_tags="connect_nodes")
 
 
-def disconnect_nodes(network_name, host_node, node):
+def disconnect_nodes(network_name, host_node, node, request):
     '''
     Disconnect peers within the same docker network.
     '''
@@ -269,9 +265,9 @@ def disconnect_nodes(network_name, host_node, node):
 
     response = requests.delete(url=url, headers=headers)
     if response.status_code == 204:
-        print(f"Peer hornet-{node_number} disconnected successfully.")
+        messages.success(request, f"Peer hornet-{node_number} disconnected successfully.", extra_tags="disconnect_nodes")
     else:
-        print("disconnect_nodes error:", response.json())
+        messages.error(request, "disconnect_nodes error:", response.json(), extra_tags="disconnect_nodes")
 
     disconnect_containers(network_name, node)
 

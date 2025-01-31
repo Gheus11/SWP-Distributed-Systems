@@ -77,7 +77,7 @@ def home(request):
                     messages.error(request, "Error: Node number must be between 0 and 99.", extra_tags="create_node")
                 else:
                     create_number = create_number.zfill(2)
-                    create_node_web(request, create_number)
+                    create_node_web(create_number, request)
                     messages.success(request, f"Hornet-{create_number} created.")
 
         # Stop node
@@ -92,7 +92,7 @@ def home(request):
                     messages.error(request, "Error: Node number must be between 0 and 99.", extra_tags="stop_node")
                 else:
                     stop_number = stop_number.zfill(2)
-                    stop_node(request, stop_number)
+                    stop_node(stop_number, request)
                     messages.success(request, f"Hornet-{stop_number} stopped.")
 
         elif action == "create_network":
@@ -100,7 +100,7 @@ def home(request):
             if network_name not in networks:
                 network_name = request.POST.get("stop_network_name", None)
                 networks.append(network_name)
-                create_network(network_name)
+                create_network(network_name, request)
                 messages.success(request, f"Network '{network_name}' created.")
             else:
                 messages.error(request, f"Network name already in use.")
@@ -109,7 +109,7 @@ def home(request):
         elif action == "stop_network":
             network_name = request.POST.get("stop_network_name", None)
             if network_name:
-                stop_network(network_name)
+                stop_network(network_name, request)
                 messages.success(request, f"Network '{network_name}' stopped.")
             else:
                 messages.error(request, f"Network name doesn't exist.")
@@ -118,7 +118,7 @@ def home(request):
             network_name = request.POST.get("connect_network_name", None)
             if network_name:
                 messages.success(request, f"Nodes peered successfully.")
-                connect_nodes(network_name, host_node, node)
+                connect_nodes(network_name, host_node, node, request)
             else:
                 messages.error(request, f"Node peering failed, network name invalid.")
             host_node = request.POST.get("connect_host_number", None)
@@ -132,7 +132,7 @@ def home(request):
             network_name = request.POST.get("disconnect_network_name", None)
             if network_name:
                 messages.success(request, f"Nodes disconnected successfully.")
-                disconnect_nodes(network_name, host_node, node)
+                disconnect_nodes(network_name, host_node, node, request)
             else:
                 messages.error(request, f"Node disconnection failed, network name invalid.")
             host_node = request.POST.get("disconnect_host_number", None)
