@@ -47,16 +47,7 @@ def login_view(request):
 def unauthorized_response(request):
     return HttpResponse("You must be logged in to access this page.", status=403)
 
-
-@login_required(login_url="/unauthorized/")
-def connect_node(request):
-    return HttpResponse("Connect node page.")
-
-@login_required(login_url="/unauthorized/")
-def disconnect_node(request):
-    return HttpResponse("Disconnect node page.")
     
-
 @login_required(login_url="/unauthorized")
 def home(request):
     if request.method == "POST":
@@ -97,14 +88,13 @@ def home(request):
 
         elif action == "create_network":
             networks = []
+            network_name = request.POST.get("network_name", None)
             if network_name not in networks:
-                network_name = request.POST.get("stop_network_name", None)
                 networks.append(network_name)
                 create_network(network_name, request)
                 messages.success(request, f"Network '{network_name}' created.")
             else:
                 messages.error(request, f"Network name already in use.")
-
 
         elif action == "stop_network":
             network_name = request.POST.get("stop_network_name", None)
@@ -116,29 +106,29 @@ def home(request):
 
         elif action == "connect_nodes":
             network_name = request.POST.get("connect_network_name", None)
+            host_node = request.POST.get("connect_host_number", None)
+            node = request.POST.get("connect_number", None)
             if network_name:
                 messages.success(request, f"Nodes peered successfully.")
                 connect_nodes(network_name, host_node, node, request)
             else:
                 messages.error(request, f"Node peering failed, network name invalid.")
-            host_node = request.POST.get("connect_host_number", None)
             if not host_node:
                 messages.error(request, f"Host node doesn't exist.")
-            node = request.POST.get("connect_number", None)
             if not node:
                 messages.error(request, f"Peering node doesn't exist.")
         
         elif action == "disconnect_nodes":
             network_name = request.POST.get("disconnect_network_name", None)
+            host_node = request.POST.get("disconnect_host_number", None)
+            node = request.POST.get("disconnect_number", None)
             if network_name:
                 messages.success(request, f"Nodes disconnected successfully.")
                 disconnect_nodes(network_name, host_node, node, request)
             else:
                 messages.error(request, f"Node disconnection failed, network name invalid.")
-            host_node = request.POST.get("disconnect_host_number", None)
             if not host_node:
                 messages.error(request, f"Host node doesn't exist.")
-            node = request.POST.get("disconnect_number", None)
             if not node:
                 messages.error(request, f"Peering node doesn't exist.")
 

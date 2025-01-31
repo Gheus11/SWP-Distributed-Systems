@@ -136,7 +136,7 @@ def stop_node(stop_number, request):
                 else:
                     subprocess.run(["docker", "compose", "--profile", "4-nodes", "down"], check=True)
                     subprocess.run([cleanup_path], check=True)
-                messages.succes(request, f"Hornet-{stop_number} stopped.", extra_tags="stop_node")
+                messages.success(request, f"Hornet-{stop_number} stopped.", extra_tags="stop_node")
             except subprocess.CalledProcessError as e:
                 messages.error(request, f"stop_node error: error occurred while stopping hornet-{stop_number}: {e}", extra_tags="stop_node")
             finally:
@@ -248,7 +248,7 @@ def connect_nodes(network_name, host_node, node, request):
     
     node_number = node[-2:]
     create_node(node_number)
-    messages.succes(request, f"'{node}' has been restarted, and is peered to '{host_node}'.\n", extra_tags="connect_nodes")
+    messages.success(request, f"'{node}' has been restarted, and is peered to '{host_node}'.\n", extra_tags="connect_nodes")
 
 
 def disconnect_nodes(network_name, host_node, node, request):
