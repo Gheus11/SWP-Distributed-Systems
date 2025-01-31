@@ -9,10 +9,10 @@ from django.contrib.auth.forms import AuthenticationForm
 from myapp.webapi import get_container_by_name, create_node_web, stop_node, create_network
 from myapp.webapi import stop_network, connect_nodes, disconnect_nodes
 
-# Create your views here.
 
 def redirect_to_login(request):
     return redirect("/login")
+
 
 def login_view(request):
     # For POST requests
@@ -64,7 +64,6 @@ def home(request):
         # From Stop Node button : "action" == "stop_node"
         action = request.POST.get("action", None)
 
-
         # Create node
         if action == "create_node":
             # Get the user input
@@ -79,7 +78,7 @@ def home(request):
                 else:
                     create_number = create_number.zfill(2)
                     create_node_web(request, create_number)
-
+                    messages.success(request, f"Hornet-{create_number} created.")
 
         # Stop node
         elif action == "stop_node":
@@ -94,27 +93,53 @@ def home(request):
                 else:
                     stop_number = stop_number.zfill(2)
                     stop_node(request, stop_number)
+                    messages.success(request, f"Hornet-{stop_number} stopped.")
 
         elif action == "create_network":
-            network_name = request.POST.get("network_name", None)
-            create_network(network_name)
+            networks = []
+            if network_name not in networks:
+                network_name = request.POST.get("stop_network_name", None)
+                networks.append(network_name)
+                create_network(network_name)
+                messages.success(request, f"Network '{network_name}' created.")
+            else:
+                messages.error(request, f"Network name already in use.")
+
 
         elif action == "stop_network":
             network_name = request.POST.get("stop_network_name", None)
-            stop_network(network_name)
+            if network_name:
+                stop_network(network_name)
+                messages.success(request, f"Network '{network_name}' stopped.")
+            else:
+                messages.error(request, f"Network name doesn't exist.")
 
         elif action == "connect_nodes":
             network_name = request.POST.get("connect_network_name", None)
+            if network_name:
+                messages.success(request, f"Nodes peered successfully.")
+                connect_nodes(network_name, host_node, node)
+            else:
+                messages.error(request, f"Node peering failed, network name invalid.")
             host_node = request.POST.get("connect_host_number", None)
+            if not host_node:
+                messages.error(request, f"Host node doesn't exist.")
             node = request.POST.get("connect_number", None)
-            connect_nodes(network_name, host_node, node)
+            if not node:
+                messages.error(request, f"Peering node doesn't exist.")
         
         elif action == "disconnect_nodes":
             network_name = request.POST.get("disconnect_network_name", None)
+            if network_name:
+                messages.success(request, f"Nodes disconnected successfully.")
+                disconnect_nodes(network_name, host_node, node)
+            else:
+                messages.error(request, f"Node disconnection failed, network name invalid.")
             host_node = request.POST.get("disconnect_host_number", None)
+            if not host_node:
+                messages.error(request, f"Host node doesn't exist.")
             node = request.POST.get("disconnect_number", None)
-            disconnect_nodes(network_name, host_node, node)
-
-
+            if not node:
+                messages.error(request, f"Peering node doesn't exist.")
 
     return render(request, "home.html")
