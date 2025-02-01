@@ -7,16 +7,20 @@ import time
 from django.contrib import messages
 from myapp.api import create_node
 
-def get_container_by_name(container_name):
+def container_state(container_name):
     """
-    get a running container instance(?) by its name
+    verify the status of a sniffer container by it's name
+    :param container_name: the name of the container
+    :return: Boolean if the status is ok
     """
     client = docker.from_env()
-    try:    # exist
-        running_containers = client.containers.list(filters={"name": container_name})
-        return running_containers
-    except docker.errors.NotFound as e:  # not exist
-        print(f"get_container_by_name exception: {e}")
+    try:
+        container = client.containers.get(container_name)
+        container_state = container.attrs['State']
+        container_is_running = container_state['Status'] == "running"
+        return container_is_running
+    except docker.errors.NotFound as e:
+        print(f"The docker container named {container_name} does not exist.")
         return None
     
 
@@ -54,94 +58,74 @@ def create_node_web(node_number, request):
     """
     start the Hornet node of the specified number.
     """
-    if not node_number.isdigit(): # if it's not a number
-        print("create_node error: Node number must be a valid number.")
-    elif get_container_by_name(f"hornet-{node_number.zfill(2)}"):  # if it already exists
-        print(f"create_node error: hornet-{node_number} already exists")
-    else:
-        if int(node_number) < 0 or int(node_number) > 99: # if it's not between 0 ~ 99
-            print("create_node error: Node number must be between 0 and 99.")
+    # Change the working directory of this .py file: You must execute "docker 
+    # compose" command in the dir where the docker-compose.yml exists. Otherwise, 
+    # the "docker compose" command cannot identify the configuration file 
+    # "docker-compose.yml". This command tend to find the configuration file in the 
+    # dir where the command is executed.
+    current_dir = os.getcwd()
+    # Get the absolute path of the "myapp" folder
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    node_dir = os.path.join(project_root, "nodes", f"node_{node_number}")
+    os.chdir(node_dir)
+
+    # Script paths
+    bootstrap_path = "./bootstrap.sh"
+    run_path = "./run.sh"
+    cleanup_path = "./cleanup.sh"
+
+    try:
+        
+        # Add execute permission only to the owner (user)
+        subprocess.run(["chmod", "u+x", bootstrap_path], check=True)
+        subprocess.run(["chmod", "u+x", run_path], check=True)
+        subprocess.run(["chmod", "u+x", cleanup_path], check=True)
+        # Execute bootstrap.sh & run.sh
+        if sys.platform == "linux":
+            subprocess.run(["sudo", bootstrap_path], check=True)
+            subprocess.run(["sudo", run_path, "-d"], check=True)
         else:
-            node_number = node_number.zfill(2)
-            # Change the working directory of this .py file: You must execute "docker 
-            # compose" command in the dir where the docker-compose.yml exists. Otherwise, 
-            # the "docker compose" command cannot identify the configuration file 
-            # "docker-compose.yml". This command tend to find the configuration file in the 
-            # dir where the command is executed.
-            current_dir = os.getcwd()
-            # Get the absolute path of the "myapp" folder
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.dirname(script_dir)
-            node_dir = os.path.join(project_root, "nodes", f"node_{node_number}")
-            os.chdir(node_dir)
-            print(f"before: {current_dir}")            
-            print(f"after: {os.getcwd()}")
-
-            # Script paths
-            bootstrap_path = "./bootstrap.sh"
-            run_path = "./run.sh"
-            cleanup_path = "./cleanup.sh"
-
-            try:
-                
-                # Add execute permission only to the owner (user)
-                subprocess.run(["chmod", "u+x", bootstrap_path], check=True)
-                subprocess.run(["chmod", "u+x", run_path], check=True)
-                subprocess.run(["chmod", "u+x", cleanup_path], check=True)
-                # Execute bootstrap.sh & run.sh
-                if sys.platform == "linux":
-                    subprocess.run(["sudo", bootstrap_path], check=True)
-                    subprocess.run(["sudo", run_path, "-d"], check=True)
-                else:
-                    subprocess.run([bootstrap_path], check=True)
-                    subprocess.run([run_path, "-d"], check=True)
-
-                print(f"Hornet-{node_number} created.")
-            except subprocess.CalledProcessError as e:
-                messages.error(request,f"create_node error: error occurred while creating hornet-{node_number}: {e}", extra_tags="create_node")
-            finally:
-                # Recover the working dir path to its original state
-                os.chdir(current_dir)
+            subprocess.run([bootstrap_path], check=True)
+            subprocess.run([run_path, "-d"], check=True)
+        print(f"Hornet-{node_number} created.")
+    except subprocess.CalledProcessError as e:
+        messages.error(request,f"create_node error: error occurred while creating hornet-{node_number}: {e}", extra_tags="create_node")
+        return
+    finally:
+        # Recover the working dir path to its original state
+        os.chdir(current_dir)
 
 
 def stop_node(stop_number, request):
     """
     stop the Hornet node of the specified number. That node should already be active (using create_node) for stop_node to work.
-    """
-    if not stop_number.isdigit():   # if it's not a number
-        print("stop_node error: Node number must be a valid number.")
-    elif get_container_by_name(f"hornet-{stop_number.zfill(2)}") is None:    # if it does not exist
-        print(f"stop_node error: hornet-{stop_number} does not exist.")
-    else:
-        if int(stop_number) < 0 or int(stop_number) > 99: # if it's not between 0 ~ 99
-            print("stop_node error: Node number must be between 0 and 99.")
+    """     
+    current_dir = os.getcwd()
+    # Get the absolute path of the "myapp" folder
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    node_dir = os.path.join(project_root, "nodes", f"node_{stop_number}")
+    os.chdir(node_dir)
+
+    # Script paths
+    cleanup_path = "./cleanup.sh"
+
+    try:
+        # Execute
+        if sys.platform == "linux":
+            subprocess.run(["sudo", "docker", "compose", "--profile", "4-nodes", "down"], check=True)
+            subprocess.run(["sudo", cleanup_path], check=True)
         else:
-            stop_number = stop_number.zfill(2)
-            
-            current_dir = os.getcwd()
-            # Get the absolute path of the "myapp" folder
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.dirname(script_dir)
-            node_dir = os.path.join(project_root, "nodes", f"node_{stop_number}")
-            os.chdir(node_dir)
-
-            # Script paths
-            cleanup_path = "./cleanup.sh"
-
-            try:
-                # Execute
-                if sys.platform == "linux":
-                    subprocess.run(["sudo", "docker", "compose", "--profile", "4-nodes", "down"], check=True)
-                    subprocess.run(["sudo", cleanup_path], check=True)
-                else:
-                    subprocess.run(["docker", "compose", "--profile", "4-nodes", "down"], check=True)
-                    subprocess.run([cleanup_path], check=True)
-                messages.success(request, f"Hornet-{stop_number} stopped.", extra_tags="stop_node")
-            except subprocess.CalledProcessError as e:
-                messages.error(request, f"stop_node error: error occurred while stopping hornet-{stop_number}: {e}", extra_tags="stop_node")
-            finally:
-                # Recover the working dir path to its original state
-                os.chdir(current_dir)
+            subprocess.run(["docker", "compose", "--profile", "4-nodes", "down"], check=True)
+            subprocess.run([cleanup_path], check=True)
+        print(f"Hornet-{stop_number} stopped.")
+    except subprocess.CalledProcessError as e:
+        messages.error(request, f"stop_node error: error occurred while stopping hornet-{stop_number}: {e}", extra_tags="stop_node")
+        return
+    finally:
+        # Recover the working dir path to its original state
+        os.chdir(current_dir)
 
 
 client_ = docker.from_env()
@@ -152,11 +136,10 @@ def create_network(name, request):
     '''
     try:
         network = client_.networks.create(name, driver="bridge")
-        messages.success(request, f"Created network: {name}")
+        messages.success(request, f"Network '{name}' created.",extra_tags="create_network")
         return network
     except docker.errors.APIError as e:
-        messages.error(request, f"create_node exception: Failed to create '{name}': {e}")
-        return None
+        messages.error(request, f"create_node exception: Failed to create '{name}': {e}", extra_tags="create_network")
 
 
 def stop_network(network_name, request):
@@ -166,7 +149,7 @@ def stop_network(network_name, request):
     try:
         network = client_.networks.get(network_name)
         network.remove()
-        messages.success(request, f"Network '{network_name}' stopped.")
+        messages.success(request, f"Network '{network_name}' stopped.", extra_tags="stop_network")
     except docker.errors.NotFound as e:
         messages.error(request, f"stop_netowrk exception: failed to stop the network '{network_name}': {e}.", extra_tags="stop_network")
     except docker.errors.APIError as e:
@@ -182,19 +165,19 @@ def connect_containers(network_name, *container_names:str):
     except docker.errors.NotFound:
         print("connect_containers exception: make sure a valid network name and/or container names are specified.")
 
-    for container_name in container_names:
-        try:
-            container = client_.containers.get(container_name)
-            if container in network.containers:
-                print(f'connect_containers error: {container_name} already exists in the network.')
-            else:
-                network.connect(container)
-                print(f"Connected '{container_name}' to the network '{network_name}'.")
-        except docker.errors.NotFound:
-            print(f"connect_containers exception: container '{container_name}' not found. Skipping.")
-            pass
-        except docker.errors.APIError as e:
-            print(f"connect_containers exception: failed to connect '{container_name}' to the network: {e}")
+    try:
+        container = client_.containers.get(container_names[0])
+        if container in network.containers:
+            print(f'connect_containers error: {container_names[0]} already exists in the network.')
+        else:
+            network.connect(container)
+            print(f"Connected '{container_names[0]}' to the network '{network_name}'.")
+    except docker.errors.NotFound:
+        print(f"connect_containers exception: container '{container_names[0]}' not found.")
+        raise
+    except docker.errors.APIError as e:
+        print(f"connect_containers exception: failed to connect '{container_names[0]}' to the network: {e}")
+        raise
 
 
 def disconnect_containers(network_name, *container_names:str):
@@ -208,16 +191,29 @@ def disconnect_containers(network_name, *container_names:str):
         print("Container(s) disconnected.")
     except docker.errors.NotFound:
         print("disconnect_containers exception: make sure a valid network name is specified.")
+        raise
     except docker.errors.APIError as e:
-            print(f"disconnect_containers exception: failed to disconnect '{container_name}' from the network '{network_name}': {e}")
+        print(f"disconnect_containers exception: failed to disconnect '{container_name}' from the network '{network_name}': {e}")
+        raise
 
 
 def connect_nodes(network_name, host_node, node, request):
     '''
     Establishes a peer connection between two nodes within the same docker network.
     '''
-    connect_containers(network_name, host_node)
-    connect_containers(network_name, node)
+    try:
+        network = client_.networks.get(network_name)
+    except docker.errors.NotFound as e:
+        messages.error(request, f"connect_nodes exception: failure: {e}", extra_tags="connect_nodes_")
+        return
+    
+    try:
+        connect_containers(network_name, host_node)
+        connect_containers(network_name, node)
+    except Exception as e:
+        messages.error(request, f"connect_containers exception: {e}", extra_tags="connect_nodes_")
+        return
+    
     host_node_number = host_node[-2:]
     
     try:
@@ -235,12 +231,16 @@ def connect_nodes(network_name, host_node, node, request):
             "alias": f"hornet-{node_number}"
         }
 
-        requests.post(url=url, headers=headers, json=data)
+        requests.post(url=url, headers=headers, json=data)  
     
     except requests.exceptions.RequestException as e:
-        messages.error(request, f'connect_nodes exception: request failure: {e}', extra_tags="connect_nodes")
+        messages.error(request, f'connect_nodes exception: request failure: {e}', extra_tags="connect_nodes_")
+        disconnect_containers(network_name, node)
+        return
     except Exception as e:
-        messages.error(request, f'connect_nodes exception: failure: {e}', extra_tags="connect_nodes")
+        messages.error(request, f'connect_nodes exception: failure: {e}', extra_tags="connect_nodes_")
+        disconnect_containers(network_name, node)
+        return
 
     time.sleep(15)
     while not client_.containers.get(node):
@@ -248,26 +248,37 @@ def connect_nodes(network_name, host_node, node, request):
     
     node_number = node[-2:]
     create_node(node_number)
-    messages.success(request, f"'{node}' has been restarted, and is peered to '{host_node}'.\n", extra_tags="connect_nodes")
+    messages.success(request, f"'{node}' has been restarted, and is peered to '{host_node}'.", extra_tags="connect_nodes_")
+    messages.success(request, f"Nodes peered successfully.", extra_tags="connect_nodes_")
 
 
 def disconnect_nodes(network_name, host_node, node, request):
     '''
     Disconnect peers within the same docker network.
     '''
-    host_node_number = host_node[-2:]
-    node_number = node[-2:]
-    node_id = get_id(node)
-    url = f"http://127.0.0.1:142{host_node_number}/api/core/v2/peers/{node_id}"
-    headers = {
-        "Accept": "application/json"
-    }
-
-    response = requests.delete(url=url, headers=headers)
-    if response.status_code == 204:
+    try:
+        network = client_.networks.get(network_name)
+        host_node_number = host_node[-2:]
+        node_number = node[-2:]
+        node_id = get_id(node)
+        if node_id == None or node_id == "":
+            raise ValueError(f"Hornet-{node_number} does not exist.")
+        url = f"http://127.0.0.1:142{host_node_number}/api/core/v2/peers/{node_id}"
+        headers = {
+            "Accept": "application/json"
+        }
+        response = requests.delete(url=url, headers=headers)
+        # if response.status_code == 204:
+        #     messages.success(request, f"Peer hornet-{node_number} disconnected successfully.", extra_tags="disconnect_nodes")
+        #     disconnect_containers(network_name, node)
+        # else:
+        #     messages.error(request, "disconnect_nodes error:", response.json(), extra_tags="disconnect_nodes")
+        disconnect_containers(network_name, node)
         messages.success(request, f"Peer hornet-{node_number} disconnected successfully.", extra_tags="disconnect_nodes")
-    else:
-        messages.error(request, "disconnect_nodes error:", response.json(), extra_tags="disconnect_nodes")
-
-    disconnect_containers(network_name, node)
-
+    except docker.errors.NotFound as e:
+        messages.error(request, f"disconnect_nodes exception: failure: {e}", extra_tags="disconnect_nodes")
+    except requests.exceptions.RequestException as e:
+        messages.error(request, f'disconnect_nodes exception: request failure: {e}', extra_tags="disconnect_nodes")
+    except Exception as e:
+        messages.error(request, f'disconnect_nodes exception: failure: {e}', extra_tags="disconnect_nodes")
+    

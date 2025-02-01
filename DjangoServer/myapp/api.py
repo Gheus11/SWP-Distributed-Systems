@@ -5,16 +5,20 @@ import docker.errors
 import requests
 import time
 
-def get_container_by_name(container_name):
+def container_state(container_name):
     """
-    get a running container instance(?) by its name
+    verify the status of a sniffer container by it's name
+    :param container_name: the name of the container
+    :return: Boolean if the status is ok
     """
     client = docker.from_env()
-    try:    # exist
-        running_containers = client.containers.list(filters={"name": container_name})
-        return running_containers
-    except docker.errors.NotFound as e:  # not exist
-        print(f"get_container_by_name exception: {e}")
+    try:
+        container = client.containers.get(container_name)
+        container_state = container.attrs['State']
+        container_is_running = container_state['Status'] == "running"
+        return container_is_running
+    except docker.errors.NotFound as e:
+        print(f"The docker container named {container_name} does not exist.")
         return None
     
 
@@ -54,8 +58,8 @@ def create_node(node_number):
     """
     if not node_number.isdigit(): # if it's not a number
         print("create_node error: Node number must be a valid number.")
-    elif get_container_by_name(f"hornet-{node_number.zfill(2)}"):  # if it already exists
-        print(f"create_node error: hornet-{node_number} already exists")
+    elif container_state(f"hornet-{node_number.zfill(2)}"):  # if it already running
+        print(f"create_node error: hornet-{node_number} is already running")
     else:
         if int(node_number) < 0 or int(node_number) > 99: # if it's not between 0 ~ 99
             print("create_node error: Node number must be between 0 and 99.")
@@ -73,8 +77,6 @@ def create_node(node_number):
             project_root = os.path.dirname(script_dir)
             node_dir = os.path.join(project_root, "nodes", f"node_{node_number}")
             os.chdir(node_dir)
-            print(f"before: {current_dir}")
-            print(f"after: {os.getcwd()}")
 
             # Script paths
             bootstrap_path = "./bootstrap.sh"
@@ -108,7 +110,7 @@ def stop_node(stop_number):
     """
     if not stop_number.isdigit():   # if it's not a number
         print("stop_node error: Node number must be a valid number.")
-    elif get_container_by_name(f"hornet-{stop_number.zfill(2)}") is None:    # if it does not exist
+    elif container_state(f"hornet-{stop_number.zfill(2)}") is None:    # if it does not exist
         print(f"stop_node error: hornet-{stop_number} does not exist.")
     else:
         if int(stop_number) < 0 or int(stop_number) > 99: # if it's not between 0 ~ 99
@@ -122,8 +124,6 @@ def stop_node(stop_number):
             project_root = os.path.dirname(script_dir)
             node_dir = os.path.join(project_root, "nodes", f"node_{stop_number}")
             os.chdir(node_dir)
-            print(f"before: {current_dir}")
-            print(f"after: {os.getcwd()}")
 
             # Script paths
             cleanup_path = "./cleanup.sh"
