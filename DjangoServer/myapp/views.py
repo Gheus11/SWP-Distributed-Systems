@@ -85,11 +85,9 @@ def home(request):
                     stop_number = stop_number.zfill(2)
                     stop_node(stop_number, request)
                     messages.success(request, f"Hornet-{stop_number} has been successfully stopped.", extra_tags="stop_node")
-
+        
         elif action == "create_network":
-            networks = []
             network_name = request.POST.get("network_name", None)
-            networks.append(network_name)
             create_network(network_name, request)
 
         elif action == "stop_network":

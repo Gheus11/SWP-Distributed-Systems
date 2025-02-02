@@ -135,11 +135,17 @@ def create_network(name, request):
     Creates a docker network with a custom name.
     '''
     try:
-        network = client_.networks.create(name, driver="bridge")
-        messages.success(request, f"Network '{name}' created.",extra_tags="create_network")
-        return network
-    except docker.errors.APIError as e:
-        messages.error(request, f"create_node exception: Failed to create '{name}': {e}", extra_tags="create_network")
+        client_.networks.get(name)
+        messages.error(request, f"create_node error: network '{name}' already exists.", extra_tags="create_network")
+        return None
+    except docker.errors.NotFound:
+            try:
+                network = client_.networks.create(name, driver="bridge")
+                messages.success(request, f"Network '{name}' created.",extra_tags="create_network")
+            except docker.errors.APIError as e:
+                messages.error(request, f"create_node exception: Failed to create '{name}': {e}", extra_tags="create_network")
+                return None
+            return network   
 
 
 def stop_network(network_name, request):
