@@ -136,7 +136,7 @@ def create_network(name, request):
     '''
     try:
         client_.networks.get(name)
-        messages.error(request, f"create_node error: network '{name}' already exists.", extra_tags="create_network")
+        messages.error(request, f"create_node: network '{name}' already exists.", extra_tags="create_network")
         return None
     except docker.errors.NotFound:
             try:
@@ -208,7 +208,7 @@ def connect_nodes(network_name, host_node, node, request):
     Establishes a peer connection between two nodes within the same docker network.
     '''
     try:
-        network = client_.networks.get(network_name)
+        client_.networks.get(network_name)
     except docker.errors.NotFound as e:
         messages.error(request, f"connect_nodes exception: failure: {e}", extra_tags="connect_nodes_")
         return

@@ -277,6 +277,8 @@ def disconnect_nodes(network_name, host_node, node):
         print("disconnect_nodes error:", response.json())
 
     disconnect_containers(network_name, node)
+    stop_node(node_number)
+    create_node(node_number)
 
 
 if __name__ == "__main__":
