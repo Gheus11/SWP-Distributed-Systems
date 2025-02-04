@@ -6,7 +6,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm
 
-from myapp.webapi import container_state, create_node_web, stop_node, create_network
+from myapp.webapi import container_state, create_node_web, stop_node_web, create_network
 from myapp.webapi import stop_network, connect_nodes, disconnect_nodes
 
 
@@ -67,6 +67,7 @@ def home(request):
                 if int(create_number) < 0 or int(create_number) > 99: # if it's not between 0 ~ 99
                     messages.error(request, "Error: Node number must be between 0 and 99.", extra_tags="create_node")
                 else:
+                    create_number = str(int(create_number)) # what if the input is "093"
                     create_number = create_number.zfill(2)
                     create_node_web(create_number, request)
                     messages.success(request, f"Hornet-{create_number} has been successfully created.", extra_tags="create_node")
@@ -76,14 +77,15 @@ def home(request):
             stop_number = request.POST.get("stop_number", None)
             if not stop_number.isdigit():   # if it's not a number
                 messages.error(request, "Error: Node number must be a valid number.", extra_tags="stop_node")
-            elif container_state(f"hornet-{stop_number.zfill(2)}") is None:   # if it does not exist
-                messages.error(request, f"Error: hornet-{stop_number.zfill(2)} does not exist.", extra_tags="stop_node")
-            else:
-                if int(stop_number) < 0 or int(stop_number) > 99: # if it's not between 0 ~ 99
+            elif int(stop_number) < 0 or int(stop_number) > 99: # if it's not between 0 ~ 99
                     messages.error(request, "Error: Node number must be between 0 and 99.", extra_tags="stop_node")
+            else:
+                stop_number = str(int(stop_number)) # what if the input is "093"
+                if container_state(f"hornet-{stop_number.zfill(2)}") is None:   # if it does not exist
+                    messages.error(request, f"Error: hornet-{stop_number.zfill(2)} does not exist.", extra_tags="stop_node")
                 else:
                     stop_number = stop_number.zfill(2)
-                    stop_node(stop_number, request)
+                    stop_node_web(stop_number, request)
                     messages.success(request, f"Hornet-{stop_number} has been successfully stopped.", extra_tags="stop_node")
         
         elif action == "create_network":

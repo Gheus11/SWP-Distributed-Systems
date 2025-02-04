@@ -5,7 +5,7 @@ import docker.errors
 import requests
 import time
 from django.contrib import messages
-from myapp.api import create_node
+from myapp.api import create_node, stop_node
 
 def container_state(container_name):
     """
@@ -76,7 +76,6 @@ def create_node_web(node_number, request):
     cleanup_path = "./cleanup.sh"
 
     try:
-        
         # Add execute permission only to the owner (user)
         subprocess.run(["chmod", "u+x", bootstrap_path], check=True)
         subprocess.run(["chmod", "u+x", run_path], check=True)
@@ -97,7 +96,7 @@ def create_node_web(node_number, request):
         os.chdir(current_dir)
 
 
-def stop_node(stop_number, request):
+def stop_node_web(stop_number, request):
     """
     stop the Hornet node of the specified number. That node should already be active (using create_node) for stop_node to work.
     """     
@@ -136,16 +135,18 @@ def create_network(name, request):
     '''
     try:
         client_.networks.get(name)
-        messages.error(request, f"create_node: network '{name}' already exists.", extra_tags="create_network")
+        messages.error(request, f"create_network exception: network '{name}' already exists.", extra_tags="create_network")
         return None
     except docker.errors.NotFound:
             try:
                 network = client_.networks.create(name, driver="bridge")
                 messages.success(request, f"Network '{name}' created.",extra_tags="create_network")
             except docker.errors.APIError as e:
-                messages.error(request, f"create_node exception: Failed to create '{name}': {e}", extra_tags="create_network")
+                messages.error(request, f"create_network exception: Failed to create '{name}': {e}", extra_tags="create_network")
                 return None
-            return network   
+            return network
+    except docker.errors.NullResource as e:
+        messages.error(request, f"create_network exception: Failed to create: {e}", extra_tags="create_network")
 
 
 def stop_network(network_name, request):
@@ -156,9 +157,7 @@ def stop_network(network_name, request):
         network = client_.networks.get(network_name)
         network.remove()
         messages.success(request, f"Network '{network_name}' stopped.", extra_tags="stop_network")
-    except docker.errors.NotFound as e:
-        messages.error(request, f"stop_netowrk exception: failed to stop the network '{network_name}': {e}.", extra_tags="stop_network")
-    except docker.errors.APIError as e:
+    except (docker.errors.NotFound, docker.errors.APIError, docker.errors.NullResource) as e:
         messages.error(request, f"stop_netowrk exception: failed to stop the network '{network_name}': {e}.", extra_tags="stop_network")
 
 
@@ -168,21 +167,14 @@ def connect_containers(network_name, *container_names:str):
     '''
     try:
         network = client_.networks.get(network_name)
-    except docker.errors.NotFound:
-        print("connect_containers exception: make sure a valid network name and/or container names are specified.")
-
-    try:
         container = client_.containers.get(container_names[0])
         if container in network.containers:
             print(f'connect_containers error: {container_names[0]} already exists in the network.')
         else:
             network.connect(container)
             print(f"Connected '{container_names[0]}' to the network '{network_name}'.")
-    except docker.errors.NotFound:
-        print(f"connect_containers exception: container '{container_names[0]}' not found.")
-        raise
-    except docker.errors.APIError as e:
-        print(f"connect_containers exception: failed to connect '{container_names[0]}' to the network: {e}")
+    except (docker.errors.NullResource, docker.errors.APIError, docker.errors.NotFound) as e:
+        print(f"connect_containers exception: Failed to connect: {e}")
         raise
 
 
@@ -195,11 +187,8 @@ def disconnect_containers(network_name, *container_names:str):
         for container_name in container_names:
             network.disconnect(container_name)
         print("Container(s) disconnected.")
-    except docker.errors.NotFound:
-        print("disconnect_containers exception: make sure a valid network name is specified.")
-        raise
-    except docker.errors.APIError as e:
-        print(f"disconnect_containers exception: failed to disconnect '{container_name}' from the network '{network_name}': {e}")
+    except (docker.errors.NullResource, docker.errors.NotFound, docker.errors.APIError) as e:
+        print(f"disconnect_containers exception: Failed to disconnect: {e}")
         raise
 
 
@@ -208,21 +197,17 @@ def connect_nodes(network_name, host_node, node, request):
     Establishes a peer connection between two nodes within the same docker network.
     '''
     try:
-        client_.networks.get(network_name)
-    except docker.errors.NotFound as e:
-        messages.error(request, f"connect_nodes exception: failure: {e}", extra_tags="connect_nodes_")
-        return
-    
-    try:
+        network = client_.networks.get(network_name)
+        if host_node == "" or node == "":
+            raise ValueError(f"Please enter both Hornet names!")
+        elif host_node == node:
+            raise ValueError(f"You've just entered the same hornet names! ;)")
+        for node_ in (host_node, node):
+            if not container_state(node_) or not container_state(node_):  # Hornet is not running or does not exists.
+                raise ValueError(f"{node_} is not running or does not exist.")
         connect_containers(network_name, host_node)
         connect_containers(network_name, node)
-    except Exception as e:
-        messages.error(request, f"connect_containers exception: {e}", extra_tags="connect_nodes_")
-        return
-    
-    host_node_number = host_node[-2:]
-    
-    try:
+        host_node_number = host_node[-2:]
         node_number = node[-2:]
         node_ip = get_ip(str(network_name), str(node))
         node_id = get_id(node)
@@ -236,26 +221,21 @@ def connect_nodes(network_name, host_node, node, request):
             "multiAddress": f"/dns/{node_ip}/tcp/15600/p2p/{node_id}",
             "alias": f"hornet-{node_number}"
         }
-
-        requests.post(url=url, headers=headers, json=data)  
-    
-    except requests.exceptions.RequestException as e:
-        messages.error(request, f'connect_nodes exception: request failure: {e}', extra_tags="connect_nodes_")
-        disconnect_containers(network_name, node)
-        return
-    except Exception as e:
+        requests.post(url=url, headers=headers, json=data)
+    except (docker.errors.NullResource, docker.errors.NotFound) as e:
         messages.error(request, f'connect_nodes exception: failure: {e}', extra_tags="connect_nodes_")
-        disconnect_containers(network_name, node)
-        return
-
-    time.sleep(15)
-    while not client_.containers.get(node):
-        time.sleep(1)
-    
-    node_number = node[-2:]
-    create_node(node_number)
-    messages.success(request, f"'{node}' has been restarted, and is peered to '{host_node}'.", extra_tags="connect_nodes_")
-    messages.success(request, f"Nodes peered successfully.", extra_tags="connect_nodes_")
+    except (ValueError, docker.errors.APIError, requests.exceptions.RequestException) as e:
+        messages.error(request, f'connect_nodes exception: failure: {e}', extra_tags="connect_nodes_")
+        if node in network.containers:
+            disconnect_containers(network_name, node)
+    else:
+        time.sleep(15)
+        while not client_.containers.get(node):
+            time.sleep(1)
+        
+        node_number = node[-2:]
+        create_node(node_number)
+        messages.success(request, f"'{node}' has been restarted, and is peered to '{host_node}'. Nodes peered successfully.", extra_tags="connect_nodes_")
 
 
 def disconnect_nodes(network_name, host_node, node, request):
@@ -264,27 +244,24 @@ def disconnect_nodes(network_name, host_node, node, request):
     '''
     try:
         network = client_.networks.get(network_name)
+        if host_node == "" or node == "":
+            raise ValueError(f"Please enter both Hornet names!")
+        elif host_node == node:
+            raise ValueError(f"You've just entered the same hornet names! ;)")
+        for node_ in (host_node, node):
+            if not container_state(node_) or container_state(node_) is None:  # Hornet is not running or does not exists.
+                raise ValueError(f"{node_} is not running or does not exist.")
         host_node_number = host_node[-2:]
         node_number = node[-2:]
         node_id = get_id(node)
-        if node_id == None or node_id == "":
-            raise ValueError(f"Hornet-{node_number} does not exist.")
         url = f"http://127.0.0.1:142{host_node_number}/api/core/v2/peers/{node_id}"
         headers = {
             "Accept": "application/json"
         }
-        response = requests.delete(url=url, headers=headers)
-        # if response.status_code == 204:
-        #     messages.success(request, f"Peer hornet-{node_number} disconnected successfully.", extra_tags="disconnect_nodes")
-        #     disconnect_containers(network_name, node)
-        # else:
-        #     messages.error(request, "disconnect_nodes error:", response.json(), extra_tags="disconnect_nodes")
+        requests.delete(url=url, headers=headers)
         disconnect_containers(network_name, node)
+        stop_node(node_number)
+        create_node(node_number)
         messages.success(request, f"Peer hornet-{node_number} disconnected successfully.", extra_tags="disconnect_nodes")
-    except docker.errors.NotFound as e:
-        messages.error(request, f"disconnect_nodes exception: failure: {e}", extra_tags="disconnect_nodes")
-    except requests.exceptions.RequestException as e:
-        messages.error(request, f'disconnect_nodes exception: request failure: {e}', extra_tags="disconnect_nodes")
-    except Exception as e:
+    except (docker.errors.NullResource, docker.errors.APIError, docker.errors.NotFound, ValueError, requests.exceptions.RequestException)  as e:
         messages.error(request, f'disconnect_nodes exception: failure: {e}', extra_tags="disconnect_nodes")
-    
